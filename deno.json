@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-read deno-bot.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --watch deno-bot.ts"
+  },
+  "imports": {
+    "std/": "https://deno.land/std@0.208.0/"
+  }
+} 
