@@ -1,6 +1,10 @@
 # Environment variables
 .env
 
+# Node.js dependencies (should not be committed)
+node_modules/
+package-lock.json
+
 # Deno cache (optional - can be committed)
 .deno/
 
