@@ -129,20 +129,22 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
     
     let message = `🔍 <b>Ethos Profile Overview</b>\n\n`;
-    message += `👤 <b>User:</b> ${finalDisplayName}\n\n`;
+    message += `👤 <b>User: <a href="${profileUrl}">${finalDisplayName}</a></b>\n\n`;
     
     // Display Ethos score if available
     if (ethosScore !== null) {
-        message += `⭐ <b>Ethos Score:</b> ${ethosScore}\n\n`;
+        message += `⭐ <b>Ethos Score: ${ethosScore}</b>\n\n`;
     } else {
         message += `⭐ <b>Ethos Score:</b> Not available\n\n`;
     }
     
     // Reviews section - only show if there are reviews
+
+    message += `📊 <b>Reviews:</b>\n`;
+    message += `\n`;
+    message += `• Total Received: ${reviews.received} (${reviews.positiveReviewPercentage.toFixed(1)}%)\n`;
+
     if (reviews.received > 0) {
-        message += `📊 <b>Reviews:</b>\n`;
-        message += `• Total Received: ${reviews.received} (${reviews.positiveReviewPercentage.toFixed(1)}%)\n`;
-        
         // Only show positive reviews if count > 0
         if (reviews.positiveReviewCount > 0) {
             message += `• Positive: ${reviews.positiveReviewCount}\n`;
@@ -157,28 +159,43 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
         if (reviews.neutralReviewCount > 0) {
             message += `• Neutral: ${reviews.neutralReviewCount}\n`;
         }
-        
-        message += `• <a href="${profileUrl}?modal=review">Review ${finalDisplayName}</a>\n`;
-        message += `\n`;
     }
+
+    message += `\n`;
+    message += `• <a href="${profileUrl}?modal=review">Review ${finalDisplayName}</a>\n`;
+    message += `\n`;
     
     // Vouches section
     message += `🤝 <b>Vouches:</b>\n`;
-    message += `• Vouches received: ${vouches.balance.received.toFixed(4)}e (${vouches.count.received})\n`;
-    message += `• Vouched for others: ${vouches.balance.deposited.toFixed(4)}e (${vouches.count.deposited})\n`;
+    message += `\n`;
+    if (reviews.received > 0) {
+        // Only show positive reviews if count > 0
+        if (vouches.balance.received > 0) {
+            message += `• Vouches received: ${vouches.balance.received.toFixed(4)}e (${vouches.count.received})\n`;
+        }
+        
+        // Only show negative reviews if count > 0
+        if (vouches.balance.deposited > 0) {
+            message += `• Vouched for others: ${vouches.balance.deposited.toFixed(4)}e (${vouches.count.deposited})\n`;
+        }
+    }
+
+    message += `\n`;
     message += `• <a href="${profileUrl}?modal=vouch">Vouch for ${finalDisplayName}</a>\n`;
 
-    // Slashes section
+    // Slashes section    
     message += `\n`;
-    message += `⚠️ <b>Slashes:</b>\n`;
-    message += `• Count: ${slashes.count}\n`;
-    if (slashes.openSlash) {
-        message += `• Open Slash: Yes\n`;
-    } else {
-        message += `• Open Slash: None\n`;
+    if (slashes.count > 0) {
+        message += `⚠️ <b>Slashes:</b>\n`;
+        message += `• Count: ${slashes.count}\n`;
+        if (slashes.openSlash) {
+            message += `• Open Slash: Yes\n`;
+        } else {
+            message += `• Open Slash: None\n`;
+        }
     }
-    
-    message += `\n🌐 <a href="${profileUrl}">View full profile</a>`;
+
+    message += `\n`;
     
     return message;
 }
