@@ -1,7 +1,13 @@
-import { load } from "https://deno.land/std@0.208.0/dotenv/mod.ts";
+// Load environment variables (optional for local development)
+let env: Record<string, string> = {};
+try {
+    const { load } = await import("https://deno.land/std@0.208.0/dotenv/mod.ts");
+    env = await load();
+} catch {
+    // Ignore dotenv loading errors in production
+    console.log('No .env file found, using environment variables');
+}
 
-// Load environment variables
-const env = await load();
 const token = env.BOT_TOKEN || Deno.env.get("BOT_TOKEN");
 
 if (!token) {
