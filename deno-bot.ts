@@ -158,6 +158,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
             message += `• Neutral: ${reviews.neutralReviewCount}\n`;
         }
         
+        message += `• <a href="${profileUrl}?modal=review">Review ${finalDisplayName}</a>\n`;
         message += `\n`;
     }
     
@@ -183,15 +184,21 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
 }
 
 // Telegram API helper functions
-async function sendMessage(chatId: number, text: string, parseMode = 'HTML') {
+async function sendMessage(chatId: number, text: string, parseMode = 'HTML', replyToMessageId?: number) {
+    const body: any = {
+        chat_id: chatId,
+        text: text,
+        parse_mode: parseMode
+    };
+    
+    if (replyToMessageId) {
+        body.reply_to_message_id = replyToMessageId;
+    }
+    
     const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            chat_id: chatId,
-            text: text,
-            parse_mode: parseMode
-        })
+        body: JSON.stringify(body)
     });
     return response.json();
 }
@@ -213,6 +220,7 @@ async function handleUpdate(update: any) {
     
     const message = update.message;
     const chatId = message.chat.id;
+    const messageId = message.message_id;
     const text = message.text;
     
     // Handle /start command
@@ -224,7 +232,7 @@ I can help you look up Ethos Network profiles using Twitter handles or EVM walle
 
 Use /help to see available commands.
         `;
-        await sendMessage(chatId, welcomeMessage);
+        await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
     }
     
@@ -244,7 +252,7 @@ Use /help to see available commands.
 
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
         `;
-        await sendMessage(chatId, helpMessage);
+        await sendMessage(chatId, helpMessage, 'HTML', messageId);
         return;
     }
     
@@ -254,7 +262,7 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
         const input = profileMatch[1].trim();
         
         if (!input) {
-            await sendMessage(chatId, '❌ Please provide a Twitter handle or EVM address.\n\nExample: <code>/profile VitalikButerin</code>');
+            await sendMessage(chatId, '❌ Please provide a Twitter handle or EVM address.\n\nExample: <code>/profile VitalikButerin</code>', 'HTML', messageId);
             return;
         }
         
@@ -275,11 +283,11 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
             
             // Format and send the profile message
             const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
-            await sendMessage(chatId, responseMessage);
+            await sendMessage(chatId, responseMessage, 'HTML', messageId);
             
         } catch (error) {
             console.error('Error in /profile command:', error);
-            await sendMessage(chatId, `❌ Profile not found on Ethos Network\n\nMake sure the Twitter handle or address is correct and has an Ethos profile.`);
+            await sendMessage(chatId, `❌ Profile not found on Ethos Network\n\nMake sure the Twitter handle or address is correct and has an Ethos profile.`, 'HTML', messageId);
         }
     }
 }
