@@ -23,11 +23,34 @@ function formatUserkey(input: string): string {
     
     // Check if it's an EVM address (starts with 0x and is 42 characters)
     if (cleanInput.startsWith('0x') && cleanInput.length === 42) {
-        return `service:ethereum:address:${cleanInput}`;
+        return `address:${cleanInput}`;
     }
     
     // Otherwise treat as Twitter username
     return `service:x.com:username:${cleanInput}`;
+}
+
+// Helper function to search for user and get name using Search API
+async function fetchUserDisplayName(input: string): Promise<string | null> {
+    try {
+        const response = await fetch(`${ETHOS_API_BASE}/api/v1/search?query=${encodeURIComponent(input)}&limit=1`);
+        
+        if (!response.ok) {
+            return null;
+        }
+        
+        const data = await response.json();
+        
+        if (!data.ok || !data.data.values || data.data.values.length === 0) {
+            return null;
+        }
+        
+        // Return the name of the first matching user
+        return data.data.values[0].name || null;
+    } catch (error) {
+        console.error('Error fetching user name:', error);
+        return null;
+    }
 }
 
 // Helper function to fetch Ethos score
@@ -75,25 +98,38 @@ async function fetchEthosProfile(userkey: string): Promise<any> {
 }
 
 // Helper function to format profile data for display
-function formatProfileMessage(profileData: any, userkey: string, ethosScore: number | null): string {
+function formatProfileMessage(profileData: any, userkey: string, ethosScore: number | null, displayName: string | null = null): string {
     const { reviews, slashes, vouches } = profileData;
     
-    // Extract username from userkey for display and generate correct profile URL
-    let displayName: string, profileUrl: string;
+    // Use provided displayName or extract from userkey as fallback
+    let finalDisplayName: string, profileUrl: string;
     
-    if (userkey.includes('username:')) {
-        displayName = userkey.split('username:')[1];
-        profileUrl = `https://app.ethos.network/profile/x/${displayName}`;
+    if (displayName) {
+        // Always prioritize the displayName from the search API
+        finalDisplayName = displayName;
+    } else if (userkey.includes('username:')) {
+        finalDisplayName = userkey.split('username:')[1];
     } else if (userkey.includes('address:')) {
-        displayName = userkey.split('address:')[1];
-        profileUrl = `https://app.ethos.network/profile/${displayName}`;
+        // For addresses, show a shortened version if no displayName available
+        const address = userkey.split('address:')[1];
+        finalDisplayName = `${address.slice(0, 6)}...${address.slice(-4)}`;
     } else {
-        displayName = userkey;
-        profileUrl = `https://app.ethos.network/profile/${displayName}`;
+        finalDisplayName = userkey;
+    }
+    
+    // Generate correct profile URL
+    if (userkey.includes('username:')) {
+        const username = userkey.split('username:')[1];
+        profileUrl = `https://app.ethos.network/profile/x/${username}`;
+    } else if (userkey.includes('address:')) {
+        const address = userkey.split('address:')[1];
+        profileUrl = `https://app.ethos.network/profile/${address}`;
+    } else {
+        profileUrl = `https://app.ethos.network/profile/${userkey}`;
     }
     
     let message = `🔍 <b>Ethos Profile Overview</b>\n\n`;
-    message += `👤 <b>User:</b> ${displayName}\n\n`;
+    message += `👤 <b>User:</b> ${finalDisplayName}\n\n`;
     
     // Display Ethos score if available
     if (ethosScore !== null) {
@@ -129,7 +165,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     message += `🤝 <b>Vouches:</b>\n`;
     message += `• Vouches received: ${vouches.balance.received.toFixed(4)}e (${vouches.count.received})\n`;
     message += `• Vouched for others: ${vouches.balance.deposited.toFixed(4)}e (${vouches.count.deposited})\n`;
-    message += `• <a href="${profileUrl}?modal=vouch">Vouch for ${displayName}</a>\n`;
+    message += `• <a href="${profileUrl}?modal=vouch">Vouch for ${finalDisplayName}</a>\n`;
 
     // Slashes section
     message += `\n`;
@@ -230,14 +266,15 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
             const userkey = formatUserkey(input);
             console.log(`Looking up profile for userkey: ${userkey}`);
             
-            // Fetch profile data and score
-            const [profileData, ethosScore] = await Promise.all([
+            // Fetch profile data, score, and user name
+            const [profileData, ethosScore, displayName] = await Promise.all([
                 fetchEthosProfile(userkey),
-                fetchEthosScore(userkey)
+                fetchEthosScore(userkey),
+                fetchUserDisplayName(input)
             ]);
             
             // Format and send the profile message
-            const responseMessage = formatProfileMessage(profileData, userkey, ethosScore);
+            const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
             await sendMessage(chatId, responseMessage);
             
         } catch (error) {

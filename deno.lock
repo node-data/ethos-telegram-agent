@@ -2,14 +2,5 @@
   "version": "5",
   "remote": {
     "https://deno.land/std@0.208.0/dotenv/mod.ts": "039468f5c87d39b69d7ca6c3d68ebca82f206ec0ff5e011d48205eea292ea5a6"
-  },
-  "workspace": {
-    "packageJson": {
-      "dependencies": [
-        "npm:dotenv@^16.3.1",
-        "npm:node-telegram-bot-api@0.64",
-        "npm:nodemon@^3.0.2"
-      ]
-    }
   }
 }
