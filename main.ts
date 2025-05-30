@@ -197,15 +197,57 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
         } else {
             message += `• Open Slash: None\n`;
         }
+        message += `\n`;
     }
-
-    message += `\n`;
     
     return message;
 }
 
+// Helper function to create inline keyboard for profile actions
+function createProfileKeyboard(userkey: string, displayName: string): any {
+    // Generate correct URLs for actions
+    let profileUrl: string, reviewUrl: string, vouchUrl: string;
+    
+    if (userkey.includes('username:')) {
+        const username = userkey.split('username:')[1];
+        profileUrl = `https://app.ethos.network/profile/x/${username}`;
+        reviewUrl = `https://app.ethos.network/profile/x/${username}?modal=review`;
+        vouchUrl = `https://app.ethos.network/profile/x/${username}?modal=vouch`;
+    } else if (userkey.includes('address:')) {
+        const address = userkey.split('address:')[1];
+        profileUrl = `https://app.ethos.network/profile/${address}`;
+        reviewUrl = `https://app.ethos.network/profile/${address}?modal=review`;
+        vouchUrl = `https://app.ethos.network/profile/${address}?modal=vouch`;
+    } else {
+        profileUrl = `https://app.ethos.network/profile/${userkey}`;
+        reviewUrl = `https://app.ethos.network/profile/${userkey}?modal=review`;
+        vouchUrl = `https://app.ethos.network/profile/${userkey}?modal=vouch`;
+    }
+    
+    return {
+        inline_keyboard: [
+            [
+                {
+                    text: `📝 Review ${displayName}`,
+                    url: reviewUrl
+                },
+                {
+                    text: `🤝 Vouch for ${displayName}`,
+                    url: vouchUrl
+                }
+            ],
+            [
+                {
+                    text: `👤 View Full Profile`,
+                    url: profileUrl
+                }
+            ]
+        ]
+    };
+}
+
 // Telegram API helper functions
-async function sendMessage(chatId: number, text: string, parseMode = 'HTML', replyToMessageId?: number) {
+async function sendMessage(chatId: number, text: string, parseMode = 'HTML', replyToMessageId?: number, replyMarkup?: any) {
     const body: any = {
         chat_id: chatId,
         text: text,
@@ -214,6 +256,10 @@ async function sendMessage(chatId: number, text: string, parseMode = 'HTML', rep
     
     if (replyToMessageId) {
         body.reply_to_message_id = replyToMessageId;
+    }
+    
+    if (replyMarkup) {
+        body.reply_markup = replyMarkup;
     }
     
     const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
@@ -309,7 +355,9 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
                 
                 // Format and send the profile message
                 const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
-                await sendMessage(chatId, responseMessage, 'HTML', messageId);
+                const finalDisplayName = displayName || (userkey.includes('username:') ? userkey.split('username:')[1] : (userkey.includes('address:') ? `${userkey.split('address:')[1].slice(0, 6)}...${userkey.split('address:')[1].slice(-4)}` : userkey));
+                const keyboard = createProfileKeyboard(userkey, finalDisplayName);
+                await sendMessage(chatId, responseMessage, 'HTML', messageId, keyboard);
                 
             } catch (error) {
                 console.error('Error in auto Twitter profile lookup:', error);
@@ -346,7 +394,9 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
             
             // Format and send the profile message
             const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
-            await sendMessage(chatId, responseMessage, 'HTML', messageId);
+            const finalDisplayName = displayName || (userkey.includes('username:') ? userkey.split('username:')[1] : (userkey.includes('address:') ? `${userkey.split('address:')[1].slice(0, 6)}...${userkey.split('address:')[1].slice(-4)}` : userkey));
+            const keyboard = createProfileKeyboard(userkey, finalDisplayName);
+            await sendMessage(chatId, responseMessage, 'HTML', messageId, keyboard);
             
         } catch (error) {
             console.error('Error in /profile command:', error);
