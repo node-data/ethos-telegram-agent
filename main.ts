@@ -125,12 +125,12 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     // Generate correct profile URL
     if (userkey.includes('username:')) {
         const username = userkey.split('username:')[1];
-        profileUrl = `https://app.ethos.network/profile/x/${username}`;
+        profileUrl = `https://app.ethos.network/profile/x/${username}?source=ethos-telegram-bot`;
     } else if (userkey.includes('address:')) {
         const address = userkey.split('address:')[1];
-        profileUrl = `https://app.ethos.network/profile/${address}`;
+        profileUrl = `https://app.ethos.network/profile/${address}?source=ethos-telegram-bot`;
     } else {
-        profileUrl = `https://app.ethos.network/profile/${userkey}`;
+        profileUrl = `https://app.ethos.network/profile/${userkey}?source=ethos-telegram-bot`;
     }
     
     let message = `🔍 <b>Ethos Profile Overview</b>\n\n`;
@@ -166,7 +166,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
 
     message += `\n`;
-    message += `• <a href="${profileUrl}?modal=review">Review ${finalDisplayName}</a>\n`;
+    message += `• <a href="${profileUrl}?modal=review&source=ethos-telegram-bot">Review ${finalDisplayName}</a>\n`;
     message += `\n`;
     
     // Vouches section
@@ -185,7 +185,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
 
     message += `\n`;
-    message += `• <a href="${profileUrl}?modal=vouch">Vouch for ${finalDisplayName}</a>\n`;
+    message += `• <a href="${profileUrl}?modal=vouch&source=ethos-telegram-bot">Vouch for ${finalDisplayName}</a>\n`;
 
     // Slashes section    
     message += `\n`;
@@ -210,18 +210,18 @@ function createProfileKeyboard(userkey: string, displayName: string): any {
     
     if (userkey.includes('username:')) {
         const username = userkey.split('username:')[1];
-        profileUrl = `https://app.ethos.network/profile/x/${username}`;
-        reviewUrl = `https://app.ethos.network/profile/x/${username}?modal=review`;
-        vouchUrl = `https://app.ethos.network/profile/x/${username}?modal=vouch`;
+        profileUrl = `https://app.ethos.network/profile/x/${username}?source=ethos-telegram-bot`;
+        reviewUrl = `https://app.ethos.network/profile/x/${username}?modal=review&source=ethos-telegram-bot`;
+        vouchUrl = `https://app.ethos.network/profile/x/${username}?modal=vouch&source=ethos-telegram-bot`;
     } else if (userkey.includes('address:')) {
         const address = userkey.split('address:')[1];
-        profileUrl = `https://app.ethos.network/profile/${address}`;
-        reviewUrl = `https://app.ethos.network/profile/${address}?modal=review`;
-        vouchUrl = `https://app.ethos.network/profile/${address}?modal=vouch`;
+        profileUrl = `https://app.ethos.network/profile/${address}?source=ethos-telegram-bot`;
+        reviewUrl = `https://app.ethos.network/profile/${address}?modal=review&source=ethos-telegram-bot`;
+        vouchUrl = `https://app.ethos.network/profile/${address}?modal=vouch&source=ethos-telegram-bot`;
     } else {
-        profileUrl = `https://app.ethos.network/profile/${userkey}`;
-        reviewUrl = `https://app.ethos.network/profile/${userkey}?modal=review`;
-        vouchUrl = `https://app.ethos.network/profile/${userkey}?modal=vouch`;
+        profileUrl = `https://app.ethos.network/profile/${userkey}?source=ethos-telegram-bot`;
+        reviewUrl = `https://app.ethos.network/profile/${userkey}?modal=review&source=ethos-telegram-bot`;
+        vouchUrl = `https://app.ethos.network/profile/${userkey}?modal=vouch&source=ethos-telegram-bot`;
     }
     
     return {
