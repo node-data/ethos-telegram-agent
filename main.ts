@@ -252,6 +252,8 @@ async function handleUpdate(update: any) {
 I can help you look up Ethos Network profiles using Twitter handles or EVM wallet addresses.
 
 Use /help to see available commands.
+
+💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
         `;
         await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
@@ -271,10 +273,50 @@ Use /help to see available commands.
 • <code>/profile @vitalikbuterin</code> - Look up Twitter handle (with @)
 • <code>/profile 0x1234...abcd</code> - Look up EVM wallet address
 
+<b>Auto-detection:</b>
+• Send any Twitter profile URL (like https://twitter.com/vitalikbuterin or https://x.com/vitalikbuterin)
+• I'll automatically extract the username and show the Ethos profile!
+
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
         `;
         await sendMessage(chatId, helpMessage, 'HTML', messageId);
         return;
+    }
+    
+    // Check for Twitter URLs in the message
+    const twitterUrlRegex = /(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)(?:\/.*)?/i;
+    const twitterMatch = text.match(twitterUrlRegex);
+    
+    if (twitterMatch) {
+        const username = twitterMatch[1];
+        
+        // Skip if it's a generic Twitter page or invalid username
+        if (username && !['home', 'search', 'notifications', 'messages', 'i', 'explore', 'settings'].includes(username.toLowerCase())) {
+            // Send "typing" action to show bot is working
+            await sendChatAction(chatId, 'typing');
+            
+            try {
+                // Format the userkey
+                const userkey = formatUserkey(username);
+                console.log(`Auto-detected Twitter profile: ${username}, looking up userkey: ${userkey}`);
+                
+                // Fetch profile data, score, and user name
+                const [profileData, ethosScore, displayName] = await Promise.all([
+                    fetchEthosProfile(userkey),
+                    fetchEthosScore(userkey),
+                    fetchUserDisplayName(username)
+                ]);
+                
+                // Format and send the profile message
+                const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
+                await sendMessage(chatId, responseMessage, 'HTML', messageId);
+                
+            } catch (error) {
+                console.error('Error in auto Twitter profile lookup:', error);
+                await sendMessage(chatId, `❌ No Ethos profile found for @${username}\n\nMake sure this Twitter account has an Ethos profile.`, 'HTML', messageId);
+            }
+            return;
+        }
     }
     
     // Handle /profile command
