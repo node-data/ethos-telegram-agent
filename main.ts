@@ -142,6 +142,25 @@ async function getDisplayName(userkey: string, profileData: any, searchInput: st
     return fallbackName;
 }
 
+// Helper function to get emoji based on Ethos score
+function getScoreEmoji(score: number): string {
+    if (score >= 0 && score <= 799) {
+        return '🔴';
+    } else if (score >= 800 && score <= 1199) {
+        return '🟡';
+    } else if (score >= 1200 && score <= 1599) {
+        return '⚪️';
+    } else if (score >= 1600 && score <= 1999) {
+        return '🔵';
+    } else if (score >= 2000 && score <= 2399) {
+        return '🟢';
+    } else if (score >= 2400 && score <= 2800) {
+        return '🟣';
+    } else {
+        return '⚪️';
+    }
+}
+
 // Helper function to format profile data for display
 function formatProfileMessage(profileData: any, userkey: string, ethosScore: number | null, displayName: string): string {
     const { reviews, slashes, vouches } = profileData;
@@ -158,14 +177,14 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
         profileUrl = `https://app.ethos.network/profile/${userkey}?source=ethos-telegram-bot`;
     }
     
-    let message = `🔍 <b>Ethos Profile Overview</b>\n\n`;
-    message += `👤 <b>User: ${displayName}</b>\n\n`;
+    let message = `🔍 <b>Ethos Profile: ${displayName}</b>\n\n`;
     
     // Display Ethos score if available
     if (ethosScore !== null) {
-        message += `⭐ <b>Ethos Score: ${ethosScore}</b>\n\n`;
+        const scoreEmoji = getScoreEmoji(ethosScore);
+        message += `<b>${scoreEmoji} Ethos Score: ${ethosScore}</b>\n\n`;
     } else {
-        message += `⭐ <b>Ethos Score:</b> Not available\n\n`;
+        message += `<b>Ethos Score:</b> Not available\n\n`;
     }
     
     // Reviews section - only show if there are reviews
