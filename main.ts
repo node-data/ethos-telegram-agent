@@ -191,8 +191,6 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
 
     message += `\n`;
-    message += `• <a href="${profileUrl}?modal=review&source=ethos-telegram-bot">Review ${displayName}</a>\n`;
-    message += `\n`;
     
     // Vouches section
     message += `🤝 <b>Vouches:</b>\n`;
@@ -210,7 +208,6 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
 
     message += `\n`;
-    message += `• <a href="${profileUrl}?modal=vouch&source=ethos-telegram-bot">Vouch for ${displayName}</a>\n`;
 
     // Slashes section    
     message += `\n`;
