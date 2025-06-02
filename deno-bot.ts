@@ -36,7 +36,7 @@ async function fetchUserDisplayName(input: string): Promise<string | null> {
     const response = await fetch(
       `${ETHOS_API_BASE}/api/v1/search?query=${
         encodeURIComponent(input)
-      }&limit=1`,
+      }&limit=2`,
     );
 
     if (!response.ok) {

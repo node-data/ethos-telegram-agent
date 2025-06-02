@@ -38,7 +38,7 @@ function formatUserkey(input: string): string {
 // Helper function to search for user and get name using Search API
 async function fetchUserDisplayName(input: string): Promise<string | null> {
     try {
-        const response = await fetch(`${ETHOS_API_BASE}/api/v1/search?query=${encodeURIComponent(input)}&limit=1`);
+        const response = await fetch(`${ETHOS_API_BASE}/api/v1/search?query=${encodeURIComponent(input)}&limit=2`);
         
         if (!response.ok) {
             return null;
