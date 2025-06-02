@@ -191,24 +191,8 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     message += `📝 <b>Reviews:</b>\n`;
     message += `\n`;
     message += `• Total Received: ${reviews.received} (${reviews.positiveReviewPercentage.toFixed(1)}%)\n`;
-
-    if (reviews.received > 0) {
-        // Only show positive reviews if count > 0
-        if (reviews.positiveReviewCount > 0) {
-            message += `• Positive: ${reviews.positiveReviewCount}\n`;
-        }
-        
-        // Only show negative reviews if count > 0
-        if (reviews.negativeReviewCount > 0) {
-            message += `• Negative: ${reviews.negativeReviewCount}\n`;
-        }
-        
-        // Only show neutral reviews if count > 0
-        if (reviews.neutralReviewCount > 0) {
-            message += `• Neutral: ${reviews.neutralReviewCount}\n`;
-        }
-    }
-
+    message += `\n`;
+    message += `🟢 Positive: ${reviews.positiveReviewCount} ⚪️Neutral: ${reviews.neutralReviewCount} 🔴 Negative: ${reviews.negativeReviewCount}\n`;
     message += `\n`;
     
     // Vouches section
