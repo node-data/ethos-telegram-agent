@@ -182,7 +182,16 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     // Display Ethos score if available
     if (ethosScore !== null) {
         const scoreEmoji = getScoreEmoji(ethosScore);
-        message += `<b>${scoreEmoji} Ethos Score: ${ethosScore}</b>\n\n`;
+        const scoreBracket = ethosScore >= 2600 ? 'Revered II' :
+            ethosScore >= 2400 ? 'Revered I' :
+            ethosScore >= 2200 ? 'Exemplary II' :
+            ethosScore >= 2000 ? 'Exemplary I' :
+            ethosScore >= 1800 ? 'Reputable II' :
+            ethosScore >= 1600 ? 'Reputable I' :
+            ethosScore >= 1200 ? 'Neutral' :
+            ethosScore >= 800 ? 'Questionable' :
+            'Untrusted';
+        message += `<b>${scoreEmoji} Ethos Score: ${ethosScore} [${scoreBracket}]</b>\n\n`;
     } else {
         message += `<b>Ethos Score:</b> Not available\n\n`;
     }
