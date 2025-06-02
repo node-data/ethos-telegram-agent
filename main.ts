@@ -102,27 +102,40 @@ async function fetchEthosProfile(userkey: string): Promise<any> {
     }
 }
 
-// Helper function to format profile data for display
-function formatProfileMessage(profileData: any, userkey: string, ethosScore: number | null, displayName: string | null = null): string {
-    const { reviews, slashes, vouches } = profileData;
-    
-    // Use provided displayName or extract from userkey as fallback
-    let finalDisplayName: string, profileUrl: string;
-    
-    if (displayName) {
-        // Always prioritize the displayName from the search API
-        finalDisplayName = displayName;
-    } else if (userkey.includes('username:')) {
-        finalDisplayName = userkey.split('username:')[1];
-    } else if (userkey.includes('address:')) {
-        // For addresses, show a shortened version if no displayName available
-        const address = userkey.split('address:')[1];
-        finalDisplayName = `${address.slice(0, 6)}...${address.slice(-4)}`;
-    } else {
-        finalDisplayName = userkey;
+// Helper function to get the display name from profile data or search API
+async function getDisplayName(userkey: string, profileData: any, searchInput: string): Promise<string> {
+    // First priority: Use name from the profile data itself
+    if (profileData && profileData.name) {
+        return profileData.name;
     }
     
+    // Second priority: Try to get name from search API using the original input
+    try {
+        const searchName = await fetchUserDisplayName(searchInput);
+        if (searchName) {
+            return searchName;
+        }
+    } catch (error) {
+        console.error('Error fetching display name from search:', error);
+    }
+    
+    // Fallback: Extract from userkey
+    if (userkey.includes('username:')) {
+        return userkey.split('username:')[1];
+    } else if (userkey.includes('address:')) {
+        const address = userkey.split('address:')[1];
+        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    }
+    
+    return userkey;
+}
+
+// Helper function to format profile data for display
+function formatProfileMessage(profileData: any, userkey: string, ethosScore: number | null, displayName: string): string {
+    const { reviews, slashes, vouches } = profileData;
+    
     // Generate correct profile URL
+    let profileUrl: string;
     if (userkey.includes('username:')) {
         const username = userkey.split('username:')[1];
         profileUrl = `https://app.ethos.network/profile/x/${username}?source=ethos-telegram-bot`;
@@ -134,7 +147,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
     
     let message = `🔍 <b>Ethos Profile Overview</b>\n\n`;
-    message += `👤 <b>User: <a href="${profileUrl}">${finalDisplayName}</a></b>\n\n`;
+    message += `👤 <b>User: <a href="${profileUrl}">${displayName}</a></b>\n\n`;
     
     // Display Ethos score if available
     if (ethosScore !== null) {
@@ -166,7 +179,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
 
     message += `\n`;
-    message += `• <a href="${profileUrl}?modal=review&source=ethos-telegram-bot">Review ${finalDisplayName}</a>\n`;
+    message += `• <a href="${profileUrl}?modal=review&source=ethos-telegram-bot">Review ${displayName}</a>\n`;
     message += `\n`;
     
     // Vouches section
@@ -185,7 +198,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
 
     message += `\n`;
-    message += `• <a href="${profileUrl}?modal=vouch&source=ethos-telegram-bot">Vouch for ${finalDisplayName}</a>\n`;
+    message += `• <a href="${profileUrl}?modal=vouch&source=ethos-telegram-bot">Vouch for ${displayName}</a>\n`;
 
     // Slashes section    
     message += `\n`;
@@ -346,17 +359,18 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
                 const userkey = formatUserkey(username);
                 console.log(`Auto-detected Twitter profile: ${username}, looking up userkey: ${userkey}`);
                 
-                // Fetch profile data, score, and user name
-                const [profileData, ethosScore, displayName] = await Promise.all([
+                // Fetch profile data and score
+                const [profileData, ethosScore] = await Promise.all([
                     fetchEthosProfile(userkey),
-                    fetchEthosScore(userkey),
-                    fetchUserDisplayName(username)
+                    fetchEthosScore(userkey)
                 ]);
+                
+                // Get the proper display name
+                const displayName = await getDisplayName(userkey, profileData, username);
                 
                 // Format and send the profile message
                 const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
-                const finalDisplayName = displayName || (userkey.includes('username:') ? userkey.split('username:')[1] : (userkey.includes('address:') ? `${userkey.split('address:')[1].slice(0, 6)}...${userkey.split('address:')[1].slice(-4)}` : userkey));
-                const keyboard = createProfileKeyboard(userkey, finalDisplayName);
+                const keyboard = createProfileKeyboard(userkey, displayName);
                 await sendMessage(chatId, responseMessage, 'HTML', messageId, keyboard);
                 
             } catch (error) {
@@ -385,17 +399,18 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
             const userkey = formatUserkey(input);
             console.log(`Looking up profile for userkey: ${userkey}`);
             
-            // Fetch profile data, score, and user name
-            const [profileData, ethosScore, displayName] = await Promise.all([
+            // Fetch profile data and score
+            const [profileData, ethosScore] = await Promise.all([
                 fetchEthosProfile(userkey),
-                fetchEthosScore(userkey),
-                fetchUserDisplayName(input)
+                fetchEthosScore(userkey)
             ]);
+            
+            // Get the proper display name
+            const displayName = await getDisplayName(userkey, profileData, input);
             
             // Format and send the profile message
             const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
-            const finalDisplayName = displayName || (userkey.includes('username:') ? userkey.split('username:')[1] : (userkey.includes('address:') ? `${userkey.split('address:')[1].slice(0, 6)}...${userkey.split('address:')[1].slice(-4)}` : userkey));
-            const keyboard = createProfileKeyboard(userkey, finalDisplayName);
+            const keyboard = createProfileKeyboard(userkey, displayName);
             await sendMessage(chatId, responseMessage, 'HTML', messageId, keyboard);
             
         } catch (error) {
@@ -440,7 +455,7 @@ async function handler(request: Request): Promise<Response> {
                 headers: { 'Content-Type': 'application/json' }
             });
         } catch (error) {
-            return new Response(JSON.stringify({ error: error.message }), {
+            return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
             });
