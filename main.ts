@@ -219,7 +219,6 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     message += `\n`;
 
     // Slashes section    
-    message += `\n`;
     if (slashes.count > 0) {
         message += `⚠️ <b>Slashes:</b>\n`;
         message += `• Count: ${slashes.count}\n`;
