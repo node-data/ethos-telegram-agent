@@ -188,7 +188,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
     
     // Reviews section - only show if there are reviews
-    message += `📊 <b>Reviews:</b>\n`;
+    message += `📝 <b>Reviews:</b>\n`;
     message += `\n`;
     message += `• Total Received: ${reviews.received} (${reviews.positiveReviewPercentage.toFixed(1)}%)\n`;
 
@@ -269,11 +269,11 @@ function createProfileKeyboard(userkey: string, displayName: string): any {
         inline_keyboard: [
             [
                 {
-                    text: `📝 Review ${displayName}`,
+                    text: `📝 Review`,
                     url: reviewUrl
                 },
                 {
-                    text: `🤝 Vouch for ${displayName}`,
+                    text: `🤝 Vouch`,
                     url: vouchUrl
                 }
             ],
