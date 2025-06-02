@@ -214,18 +214,8 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     // Vouches section
     message += `🤝 <b>Vouches:</b>\n`;
     message += `\n`;
-    if (reviews.received > 0) {
-        // Only show positive reviews if count > 0
-        if (vouches.balance.received > 0) {
-            message += `• Vouches received: ${vouches.balance.received.toFixed(4)}e (${vouches.count.received})\n`;
-        }
-        
-        // Only show negative reviews if count > 0
-        if (vouches.balance.deposited > 0) {
-            message += `• Vouched for others: ${vouches.balance.deposited.toFixed(4)}e (${vouches.count.deposited})\n`;
-        }
-    }
-
+    message += `• Vouches received: ${vouches.balance.received.toFixed(4)}e (${vouches.count.received})\n`;
+    message += `• Vouched for others: ${vouches.balance.deposited.toFixed(4)}e (${vouches.count.deposited})\n`;
     message += `\n`;
 
     // Slashes section    
