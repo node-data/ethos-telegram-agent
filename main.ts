@@ -45,13 +45,16 @@ async function fetchUserDisplayName(input: string): Promise<string | null> {
         }
         
         const data = await response.json();
+        console.log(`Search API response for "${input}":`, JSON.stringify(data, null, 2));
         
         if (!data.ok || !data.data.values || data.data.values.length === 0) {
             return null;
         }
         
         // Return the name of the first matching user
-        return data.data.values[0].name || null;
+        const name = data.data.values[0].name;
+        console.log(`Found name from search API: "${name}"`);
+        return name || null;
     } catch (error) {
         console.error('Error fetching user name:', error);
         return null;
@@ -104,8 +107,12 @@ async function fetchEthosProfile(userkey: string): Promise<any> {
 
 // Helper function to get the display name from profile data or search API
 async function getDisplayName(userkey: string, profileData: any, searchInput: string): Promise<string> {
+    console.log(`Getting display name for userkey: ${userkey}, searchInput: ${searchInput}`);
+    console.log(`Profile data:`, profileData ? JSON.stringify(profileData, null, 2) : 'null');
+    
     // First priority: Use name from the profile data itself
     if (profileData && profileData.name) {
+        console.log(`Using name from profile data: "${profileData.name}"`);
         return profileData.name;
     }
     
@@ -113,6 +120,7 @@ async function getDisplayName(userkey: string, profileData: any, searchInput: st
     try {
         const searchName = await fetchUserDisplayName(searchInput);
         if (searchName) {
+            console.log(`Using name from search API: "${searchName}"`);
             return searchName;
         }
     } catch (error) {
@@ -120,14 +128,18 @@ async function getDisplayName(userkey: string, profileData: any, searchInput: st
     }
     
     // Fallback: Extract from userkey
+    let fallbackName: string;
     if (userkey.includes('username:')) {
-        return userkey.split('username:')[1];
+        fallbackName = userkey.split('username:')[1];
     } else if (userkey.includes('address:')) {
         const address = userkey.split('address:')[1];
-        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+        fallbackName = `${address.slice(0, 6)}...${address.slice(-4)}`;
+    } else {
+        fallbackName = userkey;
     }
     
-    return userkey;
+    console.log(`Using fallback name from userkey: "${fallbackName}"`);
+    return fallbackName;
 }
 
 // Helper function to format profile data for display
