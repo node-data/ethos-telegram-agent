@@ -313,6 +313,13 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
       return;
     }
 
+    // Check for null/zero address and return not found
+    const cleanInput = input.replace(/^@/, '');
+    if (cleanInput === '0x0000000000000000000000000000000000000000' || cleanInput === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      await sendMessage(chatId, '❌ Profile not found on Ethos Network\n\nThe null address (0x000...000) does not have an Ethos profile.', 'HTML', messageId);
+      return;
+    }
+
     // Send "typing" action to show bot is working
     await sendChatAction(chatId, "typing");
 
