@@ -159,7 +159,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     }
     
     let message = `🔍 <b>Ethos Profile Overview</b>\n\n`;
-    message += `👤 <b>User: <a href="${profileUrl}">${displayName}</a></b>\n\n`;
+    message += `👤 <b>User: ${displayName}</b>\n\n`;
     
     // Display Ethos score if available
     if (ethosScore !== null) {
