@@ -1,9 +1,26 @@
 {
   "tasks": {
-    "start": "deno run --allow-net --allow-env --allow-read main.ts",
-    "dev": "deno run --allow-net --allow-env --allow-read --watch main.ts"
+    "start": "deno run --allow-net --allow-env --allow-read --unstable main.ts",
+    "dev": "deno run --allow-net --allow-env --allow-read --unstable --watch main.ts",
+    "test": "deno test --allow-net --allow-env --allow-read --unstable"
   },
   "imports": {
     "std/": "https://deno.land/std@0.208.0/"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window", "deno.unstable"],
+    "strict": true
+  },
+  "lint": {
+    "include": ["main.ts", "deno-bot.ts"],
+    "exclude": ["node_modules/"],
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "fmt": {
+    "include": ["main.ts", "deno-bot.ts"],
+    "exclude": ["node_modules/"]
   }
 } 
