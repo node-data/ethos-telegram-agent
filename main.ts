@@ -206,7 +206,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
         profileUrl = `https://app.ethos.network/profile/${userkey}?source=ethos-telegram-bot`;
     }
     
-    let message = `🔍 <b>Ethos Profile: ${displayName}</b>\n\n`;
+    let message = `\n🔍 <b>Ethos Profile: ${displayName}</b>\n\n`;
     
     // Display Ethos score if available
     if (ethosScore !== null) {
@@ -251,6 +251,9 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
         }
         message += `\n`;
     }
+    
+    // Add spacing at the end
+    message += `\n`;
     
     return message;
 }
