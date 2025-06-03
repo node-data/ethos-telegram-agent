@@ -126,7 +126,7 @@ You can re-enable them anytime by using /start_reminders or by interacting with 
 
 <b>UTC Time:</b> ${displayTime}
 
-You will receive daily contributor task reminders at <b>${displayTime}</b> every day.
+You will receive daily contributor task reminders at <b>${displayTime}</b>.
 
 Use /set_reminder_time to change your time or /stop_reminders to disable them completely.
             `.trim();
@@ -187,7 +187,7 @@ All times are in UTC timezone.
 
 <b>UTC Time:</b> ${displayTime}
 
-You will receive reminders at <b>${displayTime}</b> every day to help maintain your Ethos Network streak.
+You will receive reminders at <b>${displayTime}</b> every day to help maintain your streak.
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         } catch (error) {
