@@ -27,14 +27,20 @@ const kv = await Deno.openKv();
 console.log('🤖 Telegram bot is starting on Deno Deploy...');
 
 // User tracking functions
-async function addUserToReminders(chatId: number): Promise<void> {
+async function addUserToReminders(chatId: number, reminderTime?: string): Promise<void> {
     try {
+        // Get existing user data to preserve custom reminder time
+        const existingData = await kv.get(["users", "reminders", chatId.toString()]);
+        const existingTime = existingData.value?.reminderTime || "22:00";
+        
         await kv.set(["users", "reminders", chatId.toString()], {
             chatId,
             addedAt: new Date().toISOString(),
-            active: true
+            active: true,
+            reminderTime: reminderTime || existingTime, // Store as "HH:MM" in UTC
+            timezone: "UTC" // For future timezone support
         });
-        console.log(`Added user ${chatId} to reminder list`);
+        console.log(`Added user ${chatId} to reminder list with time ${reminderTime || existingTime}`);
     } catch (error) {
         console.error('Error adding user to reminders:', error);
     }
@@ -46,6 +52,35 @@ async function removeUserFromReminders(chatId: number): Promise<void> {
         console.log(`Removed user ${chatId} from reminder list`);
     } catch (error) {
         console.error('Error removing user from reminders:', error);
+    }
+}
+
+async function getUserReminderTime(chatId: number): Promise<string | null> {
+    try {
+        const result = await kv.get(["users", "reminders", chatId.toString()]);
+        return result.value?.reminderTime || null;
+    } catch (error) {
+        console.error('Error getting user reminder time:', error);
+        return null;
+    }
+}
+
+async function setUserReminderTime(chatId: number, reminderTime: string): Promise<void> {
+    try {
+        const existingData = await kv.get(["users", "reminders", chatId.toString()]);
+        if (existingData.value) {
+            await kv.set(["users", "reminders", chatId.toString()], {
+                ...existingData.value,
+                reminderTime: reminderTime,
+                updatedAt: new Date().toISOString()
+            });
+            console.log(`Updated reminder time for user ${chatId} to ${reminderTime}`);
+        } else {
+            // User doesn't exist, create new entry
+            await addUserToReminders(chatId, reminderTime);
+        }
+    } catch (error) {
+        console.error('Error setting user reminder time:', error);
     }
 }
 
@@ -68,14 +103,94 @@ async function getAllReminderUsers(): Promise<number[]> {
     }
 }
 
-// Daily reminder cron job - runs at 22:00 UTC (2 hours before midnight)
+async function getUsersForReminderTime(currentHour: number): Promise<number[]> {
+    try {
+        const users: number[] = [];
+        const iter = kv.list({ prefix: ["users", "reminders"] });
+        
+        for await (const entry of iter) {
+            const userData = entry.value as { 
+                chatId: number; 
+                active: boolean; 
+                reminderTime: string; 
+            };
+            
+            if (userData.active && userData.reminderTime) {
+                const [hour] = userData.reminderTime.split(':').map(Number);
+                if (hour === currentHour) {
+                    users.push(userData.chatId);
+                }
+            }
+        }
+        
+        return users;
+    } catch (error) {
+        console.error('Error getting users for reminder time:', error);
+        return [];
+    }
+}
+
+// Helper function to parse time input
+function parseReminderTime(timeInput: string): string | null {
+    // Remove spaces and convert to lowercase
+    const cleaned = timeInput.replace(/\s+/g, '').toLowerCase();
+    
+    // Handle formats like "6pm", "18:00", "6:00pm", "18", etc.
+    const patterns = [
+        /^(\d{1,2}):(\d{2})$/,           // "18:00" or "6:30"
+        /^(\d{1,2})pm$/,                // "6pm"
+        /^(\d{1,2})am$/,                // "6am"  
+        /^(\d{1,2}):(\d{2})pm$/,        // "6:30pm"
+        /^(\d{1,2}):(\d{2})am$/,        // "6:30am"
+        /^(\d{1,2})$/                   // "18" or "6"
+    ];
+    
+    for (const pattern of patterns) {
+        const match = cleaned.match(pattern);
+        if (match) {
+            let hour = parseInt(match[1]);
+            const minute = match[2] ? parseInt(match[2]) : 0;
+            
+            // Handle AM/PM
+            if (cleaned.includes('pm') && hour !== 12) {
+                hour += 12;
+            } else if (cleaned.includes('am') && hour === 12) {
+                hour = 0;
+            }
+            
+            // Validate hour and minute
+            if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+                return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            }
+        }
+    }
+    
+    return null;
+}
+
+// Format time for display
+function formatTimeForDisplay(time24: string): string {
+    const [hour, minute] = time24.split(':').map(Number);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minute.toString().padStart(2, '0')} ${period} UTC`;
+}
+
+// Hourly reminder cron job - checks every hour for users who want reminders at that time
 // @ts-ignore - Deno global is available in Deno runtime
-Deno.cron("Daily Contributor Task Reminder", "0 22 * * *", async () => {
-    console.log('🔔 Running daily contributor task reminder...');
+Deno.cron("Hourly Contributor Task Reminder Check", "0 * * * *", async () => {
+    const currentHour = new Date().getUTCHours();
+    console.log(`🔔 Checking for reminders at hour ${currentHour} UTC...`);
     
     try {
-        const users = await getAllReminderUsers();
-        console.log(`Sending reminders to ${users.length} users`);
+        const users = await getUsersForReminderTime(currentHour);
+        
+        if (users.length === 0) {
+            console.log(`No users scheduled for reminders at ${currentHour}:00 UTC`);
+            return;
+        }
+        
+        console.log(`Sending reminders to ${users.length} users at ${currentHour}:00 UTC`);
         
         const reminderMessage = `
 🔔 <b>Daily Reminder: Keep Your Ethos Streak Alive!</b>
@@ -88,18 +203,18 @@ Don't forget to complete your contributor tasks today to maintain your streak on
 • Participate in network governance
 • Share valuable insights and feedback
 
-⏰ <b>Time remaining:</b> Less than 2 hours until reset (00:00 UTC)
+⏰ <b>Time remaining:</b> Until midnight UTC (00:00)
 
 🚀 <b>Why it matters:</b>
 Consistent daily engagement helps build your reputation and strengthens the entire Ethos community.
 
-<i>Use /stop_reminders if you no longer want to receive these daily notifications.</i>
+<i>Use /stop_reminders to disable or /set_reminder_time to change your reminder time.</i>
         `.trim();
         
         let successCount = 0;
         let failureCount = 0;
         
-        // Send reminders to all users (with rate limiting)
+        // Send reminders to users scheduled for this hour (with rate limiting)
         for (const chatId of users) {
             try {
                 await sendMessage(chatId, reminderMessage, 'HTML');
@@ -120,9 +235,9 @@ Consistent daily engagement helps build your reputation and strengthens the enti
             }
         }
         
-        console.log(`✅ Reminder summary: ${successCount} sent, ${failureCount} failed`);
+        console.log(`✅ Reminder summary for ${currentHour}:00 UTC: ${successCount} sent, ${failureCount} failed`);
     } catch (error) {
-        console.error('Error in daily reminder cron job:', error);
+        console.error('Error in hourly reminder cron job:', error);
     }
 });
 
@@ -422,7 +537,7 @@ Type /help to see available commands.
 
 💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
 
-🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders at 22:00 UTC. Use /stop_reminders if you don't want these.
+🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders at 10:00 PM UTC. Use /set_reminder_time to pick your preferred time or /stop_reminders if you don't want these.
         `;
         await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
@@ -436,10 +551,20 @@ Type /help to see available commands.
 /start - Show welcome message
 /help - Show this help message
 /profile &lt;handle_or_address&gt; - Get Ethos profile information
+
+<b>Reminder Commands:</b>
 /start_reminders - Enable daily contributor task reminders
 /stop_reminders - Disable daily contributor task reminders
+/set_reminder_time &lt;time&gt; - Set your preferred reminder time (UTC)
+/get_reminder_time - Check your current reminder time
 
-<b>Examples:</b>
+<b>Time Format Examples:</b>
+• <code>/set_reminder_time 6pm</code> - 6:00 PM UTC
+• <code>/set_reminder_time 18:00</code> - 6:00 PM UTC  
+• <code>/set_reminder_time 9:30am</code> - 9:30 AM UTC
+• <code>/set_reminder_time 21</code> - 9:00 PM UTC
+
+<b>Profile Examples:</b>
 • <code>/profile vitalikbuterin</code> - Look up Twitter handle
 • <code>/profile @vitalikbuterin</code> - Look up Twitter handle (with @)
 • <code>/profile 0x1234...abcd</code> - Look up EVM wallet address
@@ -449,8 +574,9 @@ Type /help to see available commands.
 • I'll automatically extract the username and show the Ethos profile!
 
 <b>Daily Reminders:</b>
-• Get reminded at 22:00 UTC (2 hours before midnight) to complete your contributor tasks
+• Get reminded at your chosen time to complete contributor tasks
 • Helps you maintain your Ethos Network streak
+• Default time is 22:00 UTC (10:00 PM), but you can customize it!
 
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
         `;
@@ -486,6 +612,85 @@ Use /stop_reminders anytime to disable these notifications.
 You will no longer receive daily contributor task reminders.
 
 You can re-enable them anytime by using /start_reminders or by interacting with the bot again.
+        `.trim();
+        await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        return;
+    }
+    
+    // Handle /get_reminder_time command
+    if (text === '/get_reminder_time') {
+        const reminderTime = await getUserReminderTime(chatId);
+        
+        if (reminderTime) {
+            const displayTime = formatTimeForDisplay(reminderTime);
+            const confirmMessage = `
+🕐 <b>Your Current Reminder Time</b>
+
+You are set to receive daily contributor task reminders at <b>${displayTime}</b>.
+
+Use /set_reminder_time to change your reminder time, or /stop_reminders to disable them completely.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        } else {
+            const confirmMessage = `
+🔕 <b>No Reminders Set</b>
+
+You don't currently have daily reminders enabled.
+
+Use /start_reminders to enable reminders with the default time (10:00 PM UTC), or use /set_reminder_time to set a custom time.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /set_reminder_time command
+    const setTimeMatch = text.match(/^\/set_reminder_time (.+)/);
+    if (setTimeMatch) {
+        const timeInput = setTimeMatch[1].trim();
+        
+        if (!timeInput) {
+            await sendMessage(chatId, `
+❌ <b>Please specify a time</b>
+
+Examples:
+• <code>/set_reminder_time 6pm</code>
+• <code>/set_reminder_time 18:00</code>
+• <code>/set_reminder_time 9:30am</code>
+• <code>/set_reminder_time 21</code>
+
+All times are in UTC timezone.
+            `.trim(), 'HTML', messageId);
+            return;
+        }
+        
+        const parsedTime = parseReminderTime(timeInput);
+        
+        if (!parsedTime) {
+            await sendMessage(chatId, `
+❌ <b>Invalid time format</b>
+
+Please use one of these formats:
+• <b>12-hour:</b> 6pm, 9:30am, 11:45pm
+• <b>24-hour:</b> 18:00, 09:30, 23:45
+• <b>Hour only:</b> 18, 9, 23
+
+All times are in UTC timezone.
+            `.trim(), 'HTML', messageId);
+            return;
+        }
+        
+        await setUserReminderTime(chatId, parsedTime);
+        const displayTime = formatTimeForDisplay(parsedTime);
+        
+        const confirmMessage = `
+✅ <b>Reminder Time Updated!</b>
+
+Your daily contributor task reminders are now set for <b>${displayTime}</b>.
+
+You will receive reminders at this time every day to help maintain your Ethos Network streak.
+
+<i>Remember: All times are in UTC. Use /get_reminder_time to check your current setting.</i>
         `.trim();
         await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         return;
@@ -597,10 +802,16 @@ async function handler(request: Request): Promise<Response> {
             const users = await getAllReminderUsers();
             const count = users.length;
             
+            // Get hour from query parameter, default to current hour
+            const hourParam = url.searchParams.get('hour');
+            const testHour = hourParam ? parseInt(hourParam) : new Date().getUTCHours();
+            
+            const usersForHour = await getUsersForReminderTime(testHour);
+            
             const reminderMessage = `
 🔔 <b>TEST: Daily Reminder - Keep Your Ethos Streak Alive!</b>
 
-This is a test of the daily reminder system. The actual reminders are sent at 22:00 UTC.
+This is a test of the daily reminder system. Testing for hour ${testHour}:00 UTC.
 
 Don't forget to complete your contributor tasks today to maintain your streak on the Ethos Network!
 
@@ -610,14 +821,14 @@ Don't forget to complete your contributor tasks today to maintain your streak on
 • Participate in network governance
 • Share valuable insights and feedback
 
-<i>This was a test message. Use /stop_reminders if you don't want daily notifications.</i>
+<i>This was a test message. Use /set_reminder_time to change your reminder time or /stop_reminders to disable.</i>
             `.trim();
             
             let successCount = 0;
             let failureCount = 0;
             
-            // Send test reminders to all users
-            for (const chatId of users) {
+            // Send test reminders to users scheduled for this hour
+            for (const chatId of usersForHour) {
                 try {
                     await sendMessage(chatId, reminderMessage, 'HTML');
                     successCount++;
@@ -627,12 +838,25 @@ Don't forget to complete your contributor tasks today to maintain your streak on
                 }
             }
             
+            // Get statistics about all reminder times
+            const timeStats: { [key: string]: number } = {};
+            const iter = kv.list({ prefix: ["users", "reminders"] });
+            for await (const entry of iter) {
+                const userData = entry.value as { active: boolean; reminderTime: string };
+                if (userData.active && userData.reminderTime) {
+                    timeStats[userData.reminderTime] = (timeStats[userData.reminderTime] || 0) + 1;
+                }
+            }
+            
             return new Response(JSON.stringify({
                 success: true,
+                testHour: testHour,
                 totalUsers: count,
+                usersForTestHour: usersForHour.length,
                 sent: successCount,
                 failed: failureCount,
-                message: `Test reminder sent to ${successCount}/${count} users`
+                message: `Test reminder sent to ${successCount}/${usersForHour.length} users scheduled for ${testHour}:00 UTC`,
+                reminderTimeDistribution: timeStats
             }), {
                 headers: { 'Content-Type': 'application/json' }
             });
