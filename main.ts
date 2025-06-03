@@ -59,30 +59,6 @@ async function setupBotCommands() {
 // Set up bot commands menu on startup
 setupBotCommands();
 
-// Helper function to create main menu keyboard
-function createMainMenuKeyboard(): any {
-    return {
-        inline_keyboard: [
-            [
-                {
-                    text: '📋 Help & Commands',
-                    switch_inline_query_current_chat: '/help'
-                },
-                {
-                    text: '🔍 Search Profile',
-                    switch_inline_query_current_chat: '/profile '
-                }
-            ],
-            [
-                {
-                    text: '🌐 Visit Ethos Network',
-                    url: 'https://app.ethos.network?source=ethos-telegram-bot'
-                }
-            ]
-        ]
-    };
-}
-
 // Helper function to determine userkey format
 function formatUserkey(input: string): string {
     // Remove @ symbol if present
@@ -370,12 +346,11 @@ async function handleUpdate(update: any) {
 
 I can help you look up Ethos Network profiles using Twitter handles or EVM wallet addresses.
 
-Use the menu buttons below or type /help to see available commands.
+Type /help to see available commands.
 
 💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
         `;
-        const keyboard = createMainMenuKeyboard();
-        await sendMessage(chatId, welcomeMessage, 'HTML', messageId, keyboard);
+        await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
     }
     
@@ -399,8 +374,7 @@ Use the menu buttons below or type /help to see available commands.
 
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
         `;
-        const keyboard = createMainMenuKeyboard();
-        await sendMessage(chatId, helpMessage, 'HTML', messageId, keyboard);
+        await sendMessage(chatId, helpMessage, 'HTML', messageId);
         return;
     }
     
