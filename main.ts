@@ -403,6 +403,32 @@ function formatTimeForDisplayWithTimezone(time24: string, timezone: string): str
     return `${displayHour}:${minute.toString().padStart(2, '0')} ${period} ${timezone}`;
 }
 
+// Format timezone for user-friendly display
+function formatTimezoneForDisplay(timezone: string): string {
+    // If it's already a common abbreviation, return as-is
+    const commonAbbrevs = ['UTC', 'GMT', 'EST', 'EDT', 'CST', 'CDT', 'MST', 'MDT', 'PST', 'PDT', 'CET', 'CEST', 'JST', 'IST', 'AEST'];
+    if (commonAbbrevs.includes(timezone)) {
+        return timezone;
+    }
+    
+    // Convert offset format to GMT format for display
+    const offsetMatch = timezone.match(/^([+-])(\d{2}):(\d{2})$/);
+    if (offsetMatch) {
+        const [, sign, hours, minutes] = offsetMatch;
+        const hourNum = parseInt(hours);
+        const minNum = parseInt(minutes);
+        
+        if (minNum === 0) {
+            return `GMT${sign}${hourNum}`;
+        } else {
+            return `GMT${sign}${hourNum}:${minutes}`;
+        }
+    }
+    
+    // Fallback: return as-is
+    return timezone;
+}
+
 // Hourly reminder cron job - checks every hour for users who want reminders at that time
 // @ts-ignore - Deno global is available in Deno runtime
 Deno.cron("Hourly Contributor Task Reminder Check", "0 * * * *", async () => {
@@ -858,15 +884,23 @@ You can re-enable them anytime by using /start_reminders or by interacting with 
         if (userData && userData.localReminderTime) {
             const localTime = userData.localReminderTime;
             const timezone = userData.timezone || 'UTC';
-            const displayTime = formatTimeForDisplayWithTimezone(localTime, timezone);
+            const utcTime = userData.reminderTime || localTime;
+            
+            // Format the display times
+            const localDisplayTime = formatTimeForDisplayWithTimezone(localTime, timezone);
+            const utcDisplayTime = formatTimeForDisplay(utcTime);
+            
+            // Create a user-friendly timezone display
+            const friendlyTimezone = formatTimezoneForDisplay(timezone);
             
             const confirmMessage = `
 🕐 <b>Your Current Reminder Settings</b>
 
-<b>Time:</b> ${displayTime}
-<b>Timezone:</b> ${timezone}
+<b>Your Local Time:</b> ${localDisplayTime}
+<b>Timezone:</b> ${friendlyTimezone}
+<b>UTC Equivalent:</b> ${utcDisplayTime}
 
-You will receive daily contributor task reminders at this time in your local timezone.
+You will receive daily contributor task reminders at <b>${localDisplayTime}</b> every day.
 
 Use /set_reminder_time to change your time, /set_timezone to change your timezone, or /stop_reminders to disable them completely.
             `.trim();
@@ -1021,13 +1055,19 @@ Example: <code>/set_reminder_time 6pm EST</code>
             await setUserReminderTime(chatId, parsedTime, finalTimezone);
             const displayTime = formatTimeForDisplayWithTimezone(parsedTime, finalTimezone);
             
+            // Get the UTC equivalent for display
+            const utcTime = convertLocalTimeToUTC(parsedTime, finalTimezone);
+            const utcDisplayTime = formatTimeForDisplay(utcTime);
+            const friendlyTimezone = formatTimezoneForDisplay(finalTimezone);
+            
             const confirmMessage = `
 ✅ <b>Reminder Time Updated!</b>
 
-Your daily contributor task reminders are now set for:
-<b>${displayTime}</b>
+<b>Your Local Time:</b> ${displayTime}
+<b>Timezone:</b> ${friendlyTimezone}
+<b>UTC Equivalent:</b> ${utcDisplayTime}
 
-You will receive reminders at this time every day in your local timezone to help maintain your Ethos Network streak.
+You will receive reminders at <b>${displayTime}</b> every day in your local timezone to help maintain your Ethos Network streak.
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         } catch (error) {
