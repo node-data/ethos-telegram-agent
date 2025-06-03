@@ -28,7 +28,7 @@ export async function handleUpdate(update: any) {
     // Handle /start command
     if (text === '/start') {
         const welcomeMessage = `
-🎉 Welcome to the Ethos Profile Bot!
+🎉 Welcome to the Ethos Agent!
 
 I can help you look up Ethos Network profiles using Twitter handles or EVM wallet addresses.
 
@@ -36,7 +36,7 @@ Type /help to see available commands.
 
 💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
 
-🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders at 10:00 PM UTC. Use /set_reminder_time to change your preferred UTC time, or /stop_reminders if you don't want these.
+🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders 2 hours before reset[10:00 PM UTC]. Use /set_reminder_time to change your preferred UTC time, or /stop_reminders if you don't want these.
         `;
         await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
@@ -45,7 +45,7 @@ Type /help to see available commands.
     // Handle /help command
     if (text === '/help') {
         const helpMessage = `
-🤖 <b>Ethos Profile Bot Commands:</b>
+🤖 <b>Ethos Agent Commands:</b>
 
 /start - Show welcome message
 /help - Show this help message
@@ -60,16 +60,14 @@ Type /help to see available commands.
 <b>Time Examples (UTC):</b>
 • <code>/set_reminder_time 6pm</code> - 6:00 PM UTC
 • <code>/set_reminder_time 18:00</code> - 6:00 PM UTC
-• <code>/set_reminder_time 9:30am</code> - 9:30 AM UTC
-• <code>/set_reminder_time 21</code> - 9:00 PM UTC
 
 <b>Profile Examples:</b>
-• <code>/profile vitalikbuterin</code> - Look up Twitter handle
-• <code>/profile @vitalikbuterin</code> - Look up Twitter handle (with @)
+• <code>/profile ethos_network</code> - Look up Twitter handle
+• <code>/profile @ethos_network</code> - Look up Twitter handle (with @)
 • <code>/profile 0x1234...abcd</code> - Look up EVM wallet address
 
 <b>Auto-detection:</b>
-• Send any Twitter profile URL (like https://twitter.com/vitalikbuterin or https://x.com/vitalikbuterin)
+• Send any Twitter profile URL (like https://twitter.com/ethos_network or https://x.com/ethos_network)
 • I'll automatically extract the username and show the Ethos profile!
 
 <b>Daily Reminders:</b>
@@ -158,8 +156,7 @@ Use /start_reminders to enable reminders or use /set_reminder_time to set a cust
 Examples:
 • <code>/set_reminder_time 6pm</code> - 6:00 PM UTC
 • <code>/set_reminder_time 18:00</code> - 6:00 PM UTC
-• <code>/set_reminder_time 9:30am</code> - 9:30 AM UTC
-• <code>/set_reminder_time 21</code> - 9:00 PM UTC
+
 
 All times are in UTC timezone.
             `.trim(), 'HTML', messageId);
@@ -175,7 +172,6 @@ All times are in UTC timezone.
 Please use one of these formats:
 • <b>12-hour:</b> 6pm, 9:30am, 11:45pm
 • <b>24-hour:</b> 18:00, 09:30, 23:45
-• <b>Hour only:</b> 18, 9, 23
 
 All times are in UTC timezone.
             `.trim(), 'HTML', messageId);
