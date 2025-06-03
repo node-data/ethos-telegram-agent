@@ -206,54 +206,28 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
         profileUrl = `https://app.ethos.network/profile/${userkey}?source=ethos-telegram-bot`;
     }
     
-    let message = `\n🔍 <b>Ethos Profile: ${displayName}</b>\n\n`;
+    // Create score display
+    const scoreDisplay = ethosScore !== null ? `[${ethosScore}]` : '[Score N/A]';
     
-    // Display Ethos score if available
-    if (ethosScore !== null) {
-        const scoreEmoji = getScoreEmoji(ethosScore);
-        const scoreBracket = ethosScore >= 2600 ? 'Revered II' :
-            ethosScore >= 2400 ? 'Revered I' :
-            ethosScore >= 2200 ? 'Exemplary II' :
-            ethosScore >= 2000 ? 'Exemplary I' :
-            ethosScore >= 1800 ? 'Reputable II' :
-            ethosScore >= 1600 ? 'Reputable I' :
-            ethosScore >= 1200 ? 'Neutral' :
-            ethosScore >= 800 ? 'Questionable' :
-            'Untrusted';
-        message += `<b>${scoreEmoji} Ethos Score: ${ethosScore} [${scoreBracket}]</b>\n\n`;
-    } else {
-        message += `<b>Ethos Score:</b> Not available\n\n`;
-    }
+    let message = `<b>Ethos Profile: ${displayName} ${scoreDisplay}</b>\n\n`;
     
-    // Reviews section - only show if there are reviews
-    message += `📝 <b>Reviews:</b>\n`;
-    message += `\n`;
-    message += `• Total Received: ${reviews.received} (${reviews.positiveReviewPercentage.toFixed(1)}%)\n`;
-    message += `\n`;
-    message += `🟢Positive: ${reviews.positiveReviewCount} ⚪️Neutral: ${reviews.neutralReviewCount} 🔴Negative: ${reviews.negativeReviewCount}\n`;
-    message += `\n`;
+    // Reviews section
+    message += `<b>Reviews received:</b>\n`;
+    message += `Positive: ${reviews.positiveReviewCount} Neutral: ${reviews.neutralReviewCount} Negative: ${reviews.negativeReviewCount}\n\n`;
     
     // Vouches section
-    message += `🤝 <b>Vouches:</b>\n`;
-    message += `\n`;
-    message += `• Vouches received: ${vouches.balance.received.toFixed(4)}e (${vouches.count.received})\n`;
-    message += `• Vouched for others: ${vouches.balance.deposited.toFixed(4)}e (${vouches.count.deposited})\n`;
-    message += `\n`;
-
+    message += `<b>Vouches received:</b> ${vouches.balance.received.toFixed(4)}e (${vouches.count.received})\n\n`;
+    
     // Slashes section    
     if (slashes.count > 0) {
-        message += `⚠️ <b>Slashes:</b>\n`;
-        message += `• Count: ${slashes.count}\n`;
+        message += `<b>Slashes:</b>\n`;
+        message += `Count: ${slashes.count}\n`;
         if (slashes.openSlash) {
-            message += `• Open Slash: Yes\n`;
+            message += `Open Slash: Yes`;
         } else {
-            message += `• Open Slash: None\n`;
+            message += `Open Slash: None`;
         }
-        message += `\n`;
     }
-    
-    // Add spacing at the end
-    message += `\n`;
     
     return message;
 }
