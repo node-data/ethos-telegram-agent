@@ -21,44 +21,6 @@ const ETHOS_API_BASE = 'https://api.ethos.network';
 
 console.log('🤖 Telegram bot is starting on Deno Deploy...');
 
-// Helper function to set up bot commands menu
-async function setupBotCommands() {
-    const commands = [
-        {
-            command: 'start',
-            description: 'Start the bot and see welcome message'
-        },
-        {
-            command: 'help',
-            description: 'Show help and available commands'
-        },
-        {
-            command: 'profile',
-            description: 'Look up Ethos profile by Twitter handle or wallet address'
-        }
-    ];
-    
-    try {
-        const response = await fetch(`${TELEGRAM_API}/setMyCommands`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ commands })
-        });
-        
-        const result = await response.json();
-        if (result.ok) {
-            console.log('✅ Bot commands menu set up successfully');
-        } else {
-            console.error('❌ Failed to set up bot commands:', result);
-        }
-    } catch (error) {
-        console.error('❌ Error setting up bot commands:', error);
-    }
-}
-
-// Set up bot commands menu on startup
-setupBotCommands();
-
 // Helper function to determine userkey format
 function formatUserkey(input: string): string {
     // Remove @ symbol if present
