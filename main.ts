@@ -145,20 +145,49 @@ async function getDisplayName(userkey: string, profileData: any, searchInput: st
 // Helper function to get emoji based on Ethos score
 function getScoreEmoji(score: number): string {
     if (score >= 0 && score <= 799) {
-        return '🔴';
+        return '🟥';
     } else if (score >= 800 && score <= 1199) {
-        return '🟡';
+        return '🟨';
     } else if (score >= 1200 && score <= 1599) {
-        return '⚪️';
+        return '⬜️';
     } else if (score >= 1600 && score <= 1999) {
-        return '🔵';
+        return '🟦';
     } else if (score >= 2000 && score <= 2399) {
-        return '🟢';
+        return '🟩';
     } else if (score >= 2400 && score <= 2800) {
-        return '🟣';
+        return '🟪';
     } else {
-        return '⚪️';
+        return '⬜️';
     }
+}
+
+// Helper function to get image based on Ethos score
+function getScoreImage(score: number | null): string {
+    // Default Ethos logo as fallback
+    const defaultImage = 'https://app.ethos.network/assets/ethos-logo.png';
+    
+    if (score === null) return defaultImage;
+    
+    // You can replace these URLs with your own images
+    if (score >= 2400) {
+        return 'https://i.imgur.com/example-revered.png'; // Purple/Gold theme for Revered
+    } else if (score >= 2000) {
+        return 'https://i.imgur.com/example-exemplary.png'; // Green theme for Exemplary
+    } else if (score >= 1600) {
+        return 'https://i.imgur.com/example-reputable.png'; // Blue theme for Reputable
+    } else if (score >= 1200) {
+        return 'https://i.imgur.com/example-neutral.png'; // White/Gray theme for Neutral
+    } else if (score >= 800) {
+        return 'https://i.imgur.com/example-questionable.png'; // Yellow theme for Questionable
+    } else {
+        return 'https://i.imgur.com/example-untrusted.png'; // Red theme for Untrusted
+    }
+}
+
+// Helper function to get Ethos profile card image URL
+function getEthosProfileCardUrl(userkey: string): string {
+    // Use Ethos's dynamic OG profile card endpoint
+    return `https://app.ethos.network/og/profile-cards/${userkey}`;
 }
 
 // Helper function to format profile data for display
@@ -201,7 +230,7 @@ function formatProfileMessage(profileData: any, userkey: string, ethosScore: num
     message += `\n`;
     message += `• Total Received: ${reviews.received} (${reviews.positiveReviewPercentage.toFixed(1)}%)\n`;
     message += `\n`;
-    message += `🟢 Positive: ${reviews.positiveReviewCount} ⚪️Neutral: ${reviews.neutralReviewCount} 🔴 Negative: ${reviews.negativeReviewCount}\n`;
+    message += `🟢Positive: ${reviews.positiveReviewCount} ⚪️Neutral: ${reviews.neutralReviewCount} 🔴Negative: ${reviews.negativeReviewCount}\n`;
     message += `\n`;
     
     // Vouches section
@@ -304,6 +333,30 @@ async function sendChatAction(chatId: number, action: string) {
     });
 }
 
+async function sendPhoto(chatId: number, photoUrl: string, caption: string, parseMode = 'HTML', replyToMessageId?: number, replyMarkup?: any) {
+    const body: any = {
+        chat_id: chatId,
+        photo: photoUrl,
+        caption: caption,
+        parse_mode: parseMode
+    };
+    
+    if (replyToMessageId) {
+        body.reply_to_message_id = replyToMessageId;
+    }
+    
+    if (replyMarkup) {
+        body.reply_markup = replyMarkup;
+    }
+    
+    const response = await fetch(`${TELEGRAM_API}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    return response.json();
+}
+
 // Handle incoming updates
 async function handleUpdate(update: any) {
     if (!update.message || !update.message.text) return;
@@ -381,7 +434,10 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
                 // Format and send the profile message
                 const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
                 const keyboard = createProfileKeyboard(userkey, displayName);
-                await sendMessage(chatId, responseMessage, 'HTML', messageId, keyboard);
+                
+                // Send photo with profile information as caption
+                const ethosLogoUrl = getEthosProfileCardUrl(userkey);
+                await sendPhoto(chatId, ethosLogoUrl, responseMessage, 'HTML', messageId, keyboard);
                 
             } catch (error) {
                 console.error('Error in auto Twitter profile lookup:', error);
@@ -428,7 +484,10 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
             // Format and send the profile message
             const responseMessage = formatProfileMessage(profileData, userkey, ethosScore, displayName);
             const keyboard = createProfileKeyboard(userkey, displayName);
-            await sendMessage(chatId, responseMessage, 'HTML', messageId, keyboard);
+            
+            // Send photo with profile information as caption
+            const ethosLogoUrl = getEthosProfileCardUrl(userkey);
+            await sendPhoto(chatId, ethosLogoUrl, responseMessage, 'HTML', messageId, keyboard);
             
         } catch (error) {
             console.error('Error in /profile command:', error);
