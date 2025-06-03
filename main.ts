@@ -197,48 +197,6 @@ async function getDisplayName(userkey: string, profileData: any, searchInput: st
     return fallbackName;
 }
 
-// Helper function to get emoji based on Ethos score
-function getScoreEmoji(score: number): string {
-    if (score >= 0 && score <= 799) {
-        return '🟥';
-    } else if (score >= 800 && score <= 1199) {
-        return '🟨';
-    } else if (score >= 1200 && score <= 1599) {
-        return '⬜️';
-    } else if (score >= 1600 && score <= 1999) {
-        return '🟦';
-    } else if (score >= 2000 && score <= 2399) {
-        return '🟩';
-    } else if (score >= 2400 && score <= 2800) {
-        return '🟪';
-    } else {
-        return '⬜️';
-    }
-}
-
-// Helper function to get image based on Ethos score
-function getScoreImage(score: number | null): string {
-    // Default Ethos logo as fallback
-    const defaultImage = 'https://app.ethos.network/assets/ethos-logo.png';
-    
-    if (score === null) return defaultImage;
-    
-    // You can replace these URLs with your own images
-    if (score >= 2400) {
-        return 'https://i.imgur.com/example-revered.png'; // Purple/Gold theme for Revered
-    } else if (score >= 2000) {
-        return 'https://i.imgur.com/example-exemplary.png'; // Green theme for Exemplary
-    } else if (score >= 1600) {
-        return 'https://i.imgur.com/example-reputable.png'; // Blue theme for Reputable
-    } else if (score >= 1200) {
-        return 'https://i.imgur.com/example-neutral.png'; // White/Gray theme for Neutral
-    } else if (score >= 800) {
-        return 'https://i.imgur.com/example-questionable.png'; // Yellow theme for Questionable
-    } else {
-        return 'https://i.imgur.com/example-untrusted.png'; // Red theme for Untrusted
-    }
-}
-
 // Helper function to get Ethos profile card image URL
 function getEthosProfileCardUrl(userkey: string): string {
     // Use Ethos's dynamic OG profile card endpoint
