@@ -9,9 +9,6 @@ Don't forget to complete your contributor tasks today to maintain your streak!
 
 ⏰ <b>Time remaining:</b> Until midnight UTC (00:00)
 
-🚀 <b>Why it matters:</b>
-Consistent daily engagement helps build your reputation and strengthens the entire Ethos community.
-
 <i>Use /stop_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
 `.trim();
 
