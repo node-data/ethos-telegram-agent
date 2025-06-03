@@ -21,6 +21,61 @@ const ETHOS_API_BASE = 'https://api.ethos.network';
 
 console.log('🤖 Telegram bot is starting on Deno Deploy...');
 
+// Helper function to set up bot commands menu
+async function setupBotCommands() {
+    const commands = [
+        {
+            command: 'start',
+            description: 'Start the bot and see welcome message'
+        },
+        {
+            command: 'help',
+            description: 'Show help and available commands'
+        },
+        {
+            command: 'profile',
+            description: 'Look up Ethos profile by Twitter handle or wallet address'
+        }
+    ];
+    
+    try {
+        const response = await fetch(`${TELEGRAM_API}/setMyCommands`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ commands })
+        });
+        
+        const result = await response.json();
+        if (result.ok) {
+            console.log('✅ Bot commands menu set up successfully');
+        } else {
+            console.error('❌ Failed to set up bot commands:', result);
+        }
+    } catch (error) {
+        console.error('❌ Error setting up bot commands:', error);
+    }
+}
+
+// Set up bot commands menu on startup
+setupBotCommands();
+
+// Helper function to create main menu keyboard
+function createMainMenuKeyboard(): any {
+    return {
+        keyboard: [
+            [
+                { text: '📋 Help & Commands' },
+                { text: '🔍 Search Profile' }
+            ],
+            [
+                { text: '🌐 Visit Ethos Network' }
+            ]
+        ],
+        resize_keyboard: true,
+        one_time_keyboard: false
+    };
+}
+
 // Helper function to determine userkey format
 function formatUserkey(input: string): string {
     // Remove @ symbol if present
@@ -350,11 +405,12 @@ async function handleUpdate(update: any) {
 
 I can help you look up Ethos Network profiles using Twitter handles or EVM wallet addresses.
 
-Use /help to see available commands.
+Use the menu buttons below or type /help to see available commands.
 
 💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
         `;
-        await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
+        const keyboard = createMainMenuKeyboard();
+        await sendMessage(chatId, welcomeMessage, 'HTML', messageId, keyboard);
         return;
     }
     
@@ -378,7 +434,67 @@ Use /help to see available commands.
 
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
         `;
-        await sendMessage(chatId, helpMessage, 'HTML', messageId);
+        const keyboard = createMainMenuKeyboard();
+        await sendMessage(chatId, helpMessage, 'HTML', messageId, keyboard);
+        return;
+    }
+    
+    // Handle keyboard button presses
+    if (text === '📋 Help & Commands') {
+        const helpMessage = `
+🤖 <b>Ethos Profile Bot Commands:</b>
+
+/start - Show welcome message
+/help - Show this help message
+/profile &lt;handle_or_address&gt; - Get Ethos profile information
+
+<b>Examples:</b>
+• <code>/profile vitalikbuterin</code> - Look up Twitter handle
+• <code>/profile @vitalikbuterin</code> - Look up Twitter handle (with @)
+• <code>/profile 0x1234...abcd</code> - Look up EVM wallet address
+
+<b>Auto-detection:</b>
+• Send any Twitter profile URL (like https://twitter.com/vitalikbuterin or https://x.com/vitalikbuterin)
+• I'll automatically extract the username and show the Ethos profile!
+
+The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
+        `;
+        const keyboard = createMainMenuKeyboard();
+        await sendMessage(chatId, helpMessage, 'HTML', messageId, keyboard);
+        return;
+    }
+    
+    if (text === '🔍 Search Profile') {
+        const searchMessage = `
+🔍 <b>Search for an Ethos Profile</b>
+
+Send me a Twitter handle or EVM wallet address to search for an Ethos profile.
+
+<b>Examples:</b>
+• <code>vitalikbuterin</code>
+• <code>@vitalikbuterin</code>
+• <code>0x1234...abcd</code>
+
+Or use the command: <code>/profile &lt;handle_or_address&gt;</code>
+        `;
+        const keyboard = createMainMenuKeyboard();
+        await sendMessage(chatId, searchMessage, 'HTML', messageId, keyboard);
+        return;
+    }
+    
+    if (text === '🌐 Visit Ethos Network') {
+        const visitMessage = `
+🌐 <b>Visit Ethos Network</b>
+
+Learn more about Ethos Network and create your own profile:
+
+• <a href="https://app.ethos.network?source=ethos-telegram-bot">🚀 Ethos Network App</a>
+• <a href="https://ethos.network?source=ethos-telegram-bot">📖 Learn About Ethos</a>
+
+Ethos Network is a reputation protocol that allows you to build trust through reviews, vouches, and more!
+        `;
+        const keyboard = createMainMenuKeyboard();
+        await sendMessage(chatId, visitMessage, 'HTML', messageId, keyboard);
         return;
     }
     
