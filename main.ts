@@ -218,6 +218,24 @@ function getTimezoneOffsetMs(timezone: string): number {
 function parseTimezone(timezoneInput: string): string | null {
     const cleaned = timezoneInput.trim();
     
+    // Handle GMT+8, GMT-5, UTC+9 style formats
+    const gmtMatch = cleaned.match(/^(GMT|UTC)([+-])(\d{1,2})(?::?(\d{2}))?$/i);
+    if (gmtMatch) {
+        const [, , sign, hours, minutes = '00'] = gmtMatch;
+        const hourStr = hours.padStart(2, '0');
+        const minStr = minutes.padStart(2, '0');
+        return `${sign}${hourStr}:${minStr}`;
+    }
+    
+    // Handle just +8, -5 style formats
+    const offsetMatch = cleaned.match(/^([+-])(\d{1,2})(?::?(\d{2}))?$/);
+    if (offsetMatch) {
+        const [, sign, hours, minutes = '00'] = offsetMatch;
+        const hourStr = hours.padStart(2, '0');
+        const minStr = minutes.padStart(2, '0');
+        return `${sign}${hourStr}:${minStr}`;
+    }
+    
     // Common timezone patterns
     const commonTimezones = [
         'UTC', 'GMT', 
@@ -242,7 +260,7 @@ function parseTimezone(timezoneInput: string): string | null {
         }
     }
     
-    // Check for UTC offset format like +05:30, -08:00
+    // Check for UTC offset format like +05:30, -08:00 (already handled above but keeping for clarity)
     if (/^[+-]\d{2}:\d{2}$/.test(cleaned)) {
         return cleaned;
     }
@@ -740,9 +758,10 @@ Type /help to see available commands.
 • <code>/set_reminder_time 18:00 PST</code> - 6:00 PM Pacific
 • <code>/set_reminder_time 9:30am</code> - 9:30 AM (uses your saved timezone)
 • <code>/set_timezone EST</code> - Set timezone to Eastern
+• <code>/set_timezone GMT+8</code> - Set timezone to GMT+8 (China/Singapore)
 
-<b>Supported Timezones:</b>
-EST/EDT, CST/CDT, MST/MDT, PST/PDT, UTC/GMT, CET, JST, IST, AEST, and more
+<b>Supported Timezone Formats:</b>
+Abbreviations (EST, PST, JST), GMT+/-N, UTC+/-N, +HH:MM offsets
 
 <b>Profile Examples:</b>
 • <code>/profile vitalikbuterin</code> - Look up Twitter handle
@@ -841,13 +860,13 @@ Use /start_reminders to enable reminders, or use /set_reminder_time to set a cus
 
 Examples:
 • <code>/set_timezone EST</code> - Eastern Time
+• <code>/set_timezone GMT+8</code> - GMT plus 8 hours
+• <code>/set_timezone UTC-5</code> - UTC minus 5 hours
+• <code>/set_timezone +09:00</code> - UTC offset format
 • <code>/set_timezone PST</code> - Pacific Time
 • <code>/set_timezone CET</code> - Central European Time
-• <code>/set_timezone JST</code> - Japan Standard Time
-• <code>/set_timezone IST</code> - India Standard Time
-• <code>/set_timezone +05:30</code> - UTC offset format
 
-Use common timezone abbreviations or UTC offset format.
+Use timezone abbreviations, GMT+/-N, UTC+/-N, or UTC offset format.
             `.trim(), 'HTML', messageId);
             return;
         }
@@ -858,13 +877,16 @@ Use common timezone abbreviations or UTC offset format.
             await sendMessage(chatId, `
 ❌ <b>Timezone not recognized</b>
 
-Supported timezones include:
-<b>US:</b> EST/EDT, CST/CDT, MST/MDT, PST/PDT
-<b>Europe:</b> GMT, UTC, CET, CEST
-<b>Asia:</b> JST (Japan), IST (India), CST (China)
-<b>Other:</b> AEST (Australia), NZST (New Zealand)
+Supported timezone formats:
+<b>Abbreviations:</b> EST, PST, CET, JST, IST, AEST, etc.
+<b>GMT format:</b> GMT+8, GMT-5, GMT+9:30
+<b>UTC format:</b> UTC+8, UTC-5, UTC+5:30
+<b>Offset format:</b> +08:00, -05:00, +09:30
 
-You can also use UTC offset format like: +05:30, -08:00, +09:00
+Examples for common regions:
+• <b>Asia:</b> GMT+8 (China), GMT+9 (Japan), GMT+5:30 (India)
+• <b>Europe:</b> GMT+1 (CET), GMT+0 (GMT/UTC)
+• <b>US:</b> GMT-5 (EST), GMT-8 (PST), GMT-6 (CST)
             `.trim(), 'HTML', messageId);
             return;
         }
