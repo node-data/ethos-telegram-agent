@@ -27,20 +27,22 @@ const kv = await Deno.openKv();
 console.log('🤖 Telegram bot is starting on Deno Deploy...');
 
 // User tracking functions
-async function addUserToReminders(chatId: number, reminderTime?: string): Promise<void> {
+async function addUserToReminders(chatId: number, reminderTime?: string, timezone?: string): Promise<void> {
     try {
-        // Get existing user data to preserve custom reminder time
+        // Get existing user data to preserve custom settings
         const existingData = await kv.get(["users", "reminders", chatId.toString()]);
         const existingTime = existingData.value?.reminderTime || "22:00";
+        const existingTimezone = existingData.value?.timezone || "UTC";
         
         await kv.set(["users", "reminders", chatId.toString()], {
             chatId,
             addedAt: new Date().toISOString(),
             active: true,
             reminderTime: reminderTime || existingTime, // Store as "HH:MM" in UTC
-            timezone: "UTC" // For future timezone support
+            timezone: timezone || existingTimezone, // User's local timezone
+            localReminderTime: reminderTime || existingTime // Store original local time for display
         });
-        console.log(`Added user ${chatId} to reminder list with time ${reminderTime || existingTime}`);
+        console.log(`Added user ${chatId} to reminder list with time ${reminderTime || existingTime} (${timezone || existingTimezone})`);
     } catch (error) {
         console.error('Error adding user to reminders:', error);
     }
@@ -55,6 +57,16 @@ async function removeUserFromReminders(chatId: number): Promise<void> {
     }
 }
 
+async function getUserReminderData(chatId: number): Promise<any> {
+    try {
+        const result = await kv.get(["users", "reminders", chatId.toString()]);
+        return result.value || null;
+    } catch (error) {
+        console.error('Error getting user reminder data:', error);
+        return null;
+    }
+}
+
 async function getUserReminderTime(chatId: number): Promise<string | null> {
     try {
         const result = await kv.get(["users", "reminders", chatId.toString()]);
@@ -65,23 +77,177 @@ async function getUserReminderTime(chatId: number): Promise<string | null> {
     }
 }
 
-async function setUserReminderTime(chatId: number, reminderTime: string): Promise<void> {
+async function setUserReminderTime(chatId: number, localTime: string, timezone: string): Promise<void> {
     try {
+        // Convert local time to UTC
+        const utcTime = convertLocalTimeToUTC(localTime, timezone);
+        
         const existingData = await kv.get(["users", "reminders", chatId.toString()]);
         if (existingData.value) {
             await kv.set(["users", "reminders", chatId.toString()], {
                 ...existingData.value,
-                reminderTime: reminderTime,
+                reminderTime: utcTime, // Store UTC time for cron scheduling
+                localReminderTime: localTime, // Store local time for display
+                timezone: timezone,
                 updatedAt: new Date().toISOString()
             });
-            console.log(`Updated reminder time for user ${chatId} to ${reminderTime}`);
+            console.log(`Updated reminder time for user ${chatId} to ${localTime} ${timezone} (${utcTime} UTC)`);
         } else {
             // User doesn't exist, create new entry
-            await addUserToReminders(chatId, reminderTime);
+            await addUserToReminders(chatId, utcTime, timezone);
         }
     } catch (error) {
         console.error('Error setting user reminder time:', error);
+        throw error;
     }
+}
+
+async function setUserTimezone(chatId: number, timezone: string): Promise<void> {
+    try {
+        const existingData = await kv.get(["users", "reminders", chatId.toString()]);
+        if (existingData.value) {
+            // Recalculate UTC time based on new timezone
+            const localTime = existingData.value.localReminderTime || "22:00";
+            const utcTime = convertLocalTimeToUTC(localTime, timezone);
+            
+            await kv.set(["users", "reminders", chatId.toString()], {
+                ...existingData.value,
+                timezone: timezone,
+                reminderTime: utcTime,
+                updatedAt: new Date().toISOString()
+            });
+            console.log(`Updated timezone for user ${chatId} to ${timezone}`);
+        } else {
+            // User doesn't exist, create new entry with default time
+            await addUserToReminders(chatId, "22:00", timezone);
+        }
+    } catch (error) {
+        console.error('Error setting user timezone:', error);
+        throw error;
+    }
+}
+
+// Timezone conversion functions
+function convertLocalTimeToUTC(localTime: string, timezone: string): string {
+    try {
+        const [hour, minute] = localTime.split(':').map(Number);
+        
+        // Create a date in the user's timezone
+        const today = new Date();
+        const localDateString = today.toISOString().split('T')[0]; // Get YYYY-MM-DD
+        const localDateTime = `${localDateString}T${localTime}:00`;
+        
+        // Parse the time in the user's timezone and convert to UTC
+        const localDate = new Date(localDateTime + getTimezoneOffset(timezone));
+        
+        // Get UTC hours and minutes
+        const utcHour = localDate.getUTCHours();
+        const utcMinute = localDate.getUTCMinutes();
+        
+        return `${utcHour.toString().padStart(2, '0')}:${utcMinute.toString().padStart(2, '0')}`;
+    } catch (error) {
+        console.error('Error converting local time to UTC:', error);
+        // Fallback: assume UTC if conversion fails
+        return localTime;
+    }
+}
+
+function convertUTCToLocalTime(utcTime: string, timezone: string): string {
+    try {
+        const [hour, minute] = utcTime.split(':').map(Number);
+        
+        // Create UTC date
+        const today = new Date();
+        const utcDateString = today.toISOString().split('T')[0];
+        const utcDateTime = new Date(`${utcDateString}T${utcTime}:00Z`);
+        
+        // Convert to local timezone
+        const localTime = new Date(utcDateTime.getTime() - getTimezoneOffsetMs(timezone));
+        
+        const localHour = localTime.getUTCHours();
+        const localMinute = localTime.getUTCMinutes();
+        
+        return `${localHour.toString().padStart(2, '0')}:${localMinute.toString().padStart(2, '0')}`;
+    } catch (error) {
+        console.error('Error converting UTC to local time:', error);
+        return utcTime;
+    }
+}
+
+function getTimezoneOffset(timezone: string): string {
+    // Common timezone mappings to UTC offsets
+    const timezoneMap: { [key: string]: string } = {
+        // US Timezones
+        'EST': '-05:00', 'Eastern': '-05:00', 'ET': '-05:00',
+        'EDT': '-04:00',
+        'CST': '-06:00', 'Central': '-06:00', 'CT': '-06:00',
+        'CDT': '-05:00',
+        'MST': '-07:00', 'Mountain': '-07:00', 'MT': '-07:00',
+        'MDT': '-06:00',
+        'PST': '-08:00', 'Pacific': '-08:00', 'PT': '-08:00',
+        'PDT': '-07:00',
+        
+        // European Timezones
+        'GMT': '+00:00', 'UTC': '+00:00',
+        'CET': '+01:00', 'CEST': '+02:00',
+        'EET': '+02:00', 'EEST': '+03:00',
+        
+        // Asian Timezones
+        'JST': '+09:00', 'Japan': '+09:00',
+        'CST_CHINA': '+08:00', 'China': '+08:00',
+        'IST': '+05:30', 'India': '+05:30',
+        
+        // Other common ones
+        'AEST': '+10:00', 'Australia': '+10:00',
+        'NZST': '+12:00', 'NewZealand': '+12:00'
+    };
+    
+    const normalizedTz = timezone.toUpperCase().replace(/[^A-Z]/g, '');
+    return timezoneMap[normalizedTz] || timezoneMap[timezone] || '+00:00';
+}
+
+function getTimezoneOffsetMs(timezone: string): number {
+    const offsetStr = getTimezoneOffset(timezone);
+    const [sign, time] = offsetStr.match(/([+-])(\d{2}):(\d{2})/)?.slice(1) || ['+', '00', '00'];
+    const [hours, minutes] = [parseInt(time), parseInt(offsetStr.split(':')[1] || '0')];
+    const totalMinutes = hours * 60 + minutes;
+    return (sign === '+' ? totalMinutes : -totalMinutes) * 60 * 1000;
+}
+
+// Parse timezone input
+function parseTimezone(timezoneInput: string): string | null {
+    const cleaned = timezoneInput.trim();
+    
+    // Common timezone patterns
+    const commonTimezones = [
+        'UTC', 'GMT', 
+        'EST', 'EDT', 'Eastern', 'ET',
+        'CST', 'CDT', 'Central', 'CT', 
+        'MST', 'MDT', 'Mountain', 'MT',
+        'PST', 'PDT', 'Pacific', 'PT',
+        'CET', 'CEST',
+        'JST', 'Japan',
+        'IST', 'India',
+        'AEST', 'Australia',
+        'NZST', 'NewZealand'
+    ];
+    
+    // Check if it's a recognized timezone
+    const normalizedInput = cleaned.toLowerCase();
+    for (const tz of commonTimezones) {
+        if (tz.toLowerCase() === normalizedInput || 
+            tz.toLowerCase().includes(normalizedInput) ||
+            normalizedInput.includes(tz.toLowerCase())) {
+            return tz;
+        }
+    }
+    
+    // Check for UTC offset format like +05:30, -08:00
+    if (/^[+-]\d{2}:\d{2}$/.test(cleaned)) {
+        return cleaned;
+    }
+    
+    return null;
 }
 
 async function getAllReminderUsers(): Promise<number[]> {
@@ -174,6 +340,14 @@ function formatTimeForDisplay(time24: string): string {
     const period = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
     return `${displayHour}:${minute.toString().padStart(2, '0')} ${period} UTC`;
+}
+
+// Format time for display with timezone
+function formatTimeForDisplayWithTimezone(time24: string, timezone: string): string {
+    const [hour, minute] = time24.split(':').map(Number);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minute.toString().padStart(2, '0')} ${period} ${timezone}`;
 }
 
 // Hourly reminder cron job - checks every hour for users who want reminders at that time
@@ -537,7 +711,9 @@ Type /help to see available commands.
 
 💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
 
-🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders at 10:00 PM UTC. Use /set_reminder_time to pick your preferred time or /stop_reminders if you don't want these.
+🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders at 10:00 PM UTC. Use /set_reminder_time to set your preferred time in YOUR timezone, or /stop_reminders if you don't want these.
+
+⏰ <b>New:</b> Set reminders in your local time! Use /set_timezone to set your timezone, then /set_reminder_time with times like "6pm" or "18:00".
         `;
         await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
@@ -555,14 +731,18 @@ Type /help to see available commands.
 <b>Reminder Commands:</b>
 /start_reminders - Enable daily contributor task reminders
 /stop_reminders - Disable daily contributor task reminders
-/set_reminder_time &lt;time&gt; - Set your preferred reminder time (UTC)
+/set_reminder_time &lt;time&gt; [timezone] - Set your preferred reminder time
 /get_reminder_time - Check your current reminder time
+/set_timezone &lt;timezone&gt; - Set your timezone
 
-<b>Time Format Examples:</b>
-• <code>/set_reminder_time 6pm</code> - 6:00 PM UTC
-• <code>/set_reminder_time 18:00</code> - 6:00 PM UTC  
-• <code>/set_reminder_time 9:30am</code> - 9:30 AM UTC
-• <code>/set_reminder_time 21</code> - 9:00 PM UTC
+<b>Time Examples (in YOUR timezone):</b>
+• <code>/set_reminder_time 6pm EST</code> - 6:00 PM Eastern
+• <code>/set_reminder_time 18:00 PST</code> - 6:00 PM Pacific
+• <code>/set_reminder_time 9:30am</code> - 9:30 AM (uses your saved timezone)
+• <code>/set_timezone EST</code> - Set timezone to Eastern
+
+<b>Supported Timezones:</b>
+EST/EDT, CST/CDT, MST/MDT, PST/PDT, UTC/GMT, CET, JST, IST, AEST, and more
 
 <b>Profile Examples:</b>
 • <code>/profile vitalikbuterin</code> - Look up Twitter handle
@@ -574,9 +754,9 @@ Type /help to see available commands.
 • I'll automatically extract the username and show the Ethos profile!
 
 <b>Daily Reminders:</b>
-• Get reminded at your chosen time to complete contributor tasks
+• Get reminded at your chosen time IN YOUR TIMEZONE to complete contributor tasks
 • Helps you maintain your Ethos Network streak
-• Default time is 22:00 UTC (10:00 PM), but you can customize it!
+• No more UTC conversion needed!
 
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
         `;
@@ -619,16 +799,22 @@ You can re-enable them anytime by using /start_reminders or by interacting with 
     
     // Handle /get_reminder_time command
     if (text === '/get_reminder_time') {
-        const reminderTime = await getUserReminderTime(chatId);
+        const userData = await getUserReminderData(chatId);
         
-        if (reminderTime) {
-            const displayTime = formatTimeForDisplay(reminderTime);
+        if (userData && userData.localReminderTime) {
+            const localTime = userData.localReminderTime;
+            const timezone = userData.timezone || 'UTC';
+            const displayTime = formatTimeForDisplayWithTimezone(localTime, timezone);
+            
             const confirmMessage = `
-🕐 <b>Your Current Reminder Time</b>
+🕐 <b>Your Current Reminder Settings</b>
 
-You are set to receive daily contributor task reminders at <b>${displayTime}</b>.
+<b>Time:</b> ${displayTime}
+<b>Timezone:</b> ${timezone}
 
-Use /set_reminder_time to change your reminder time, or /stop_reminders to disable them completely.
+You will receive daily contributor task reminders at this time in your local timezone.
+
+Use /set_reminder_time to change your time, /set_timezone to change your timezone, or /stop_reminders to disable them completely.
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         } else {
@@ -637,9 +823,65 @@ Use /set_reminder_time to change your reminder time, or /stop_reminders to disab
 
 You don't currently have daily reminders enabled.
 
-Use /start_reminders to enable reminders with the default time (10:00 PM UTC), or use /set_reminder_time to set a custom time.
+Use /start_reminders to enable reminders, or use /set_reminder_time to set a custom time in your timezone.
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /set_timezone command
+    const setTimezoneMatch = text.match(/^\/set_timezone (.+)/);
+    if (setTimezoneMatch) {
+        const timezoneInput = setTimezoneMatch[1].trim();
+        
+        if (!timezoneInput) {
+            await sendMessage(chatId, `
+❌ <b>Please specify a timezone</b>
+
+Examples:
+• <code>/set_timezone EST</code> - Eastern Time
+• <code>/set_timezone PST</code> - Pacific Time
+• <code>/set_timezone CET</code> - Central European Time
+• <code>/set_timezone JST</code> - Japan Standard Time
+• <code>/set_timezone IST</code> - India Standard Time
+• <code>/set_timezone +05:30</code> - UTC offset format
+
+Use common timezone abbreviations or UTC offset format.
+            `.trim(), 'HTML', messageId);
+            return;
+        }
+        
+        const parsedTimezone = parseTimezone(timezoneInput);
+        
+        if (!parsedTimezone) {
+            await sendMessage(chatId, `
+❌ <b>Timezone not recognized</b>
+
+Supported timezones include:
+<b>US:</b> EST/EDT, CST/CDT, MST/MDT, PST/PDT
+<b>Europe:</b> GMT, UTC, CET, CEST
+<b>Asia:</b> JST (Japan), IST (India), CST (China)
+<b>Other:</b> AEST (Australia), NZST (New Zealand)
+
+You can also use UTC offset format like: +05:30, -08:00, +09:00
+            `.trim(), 'HTML', messageId);
+            return;
+        }
+        
+        try {
+            await setUserTimezone(chatId, parsedTimezone);
+            
+            const confirmMessage = `
+✅ <b>Timezone Updated!</b>
+
+Your timezone is now set to <b>${parsedTimezone}</b>.
+
+If you have existing reminders, they will now be calculated based on your new timezone. Use /get_reminder_time to see your current settings.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        } catch (error) {
+            await sendMessage(chatId, '❌ Error updating timezone. Please try again.', 'HTML', messageId);
         }
         return;
     }
@@ -647,21 +889,37 @@ Use /start_reminders to enable reminders with the default time (10:00 PM UTC), o
     // Handle /set_reminder_time command
     const setTimeMatch = text.match(/^\/set_reminder_time (.+)/);
     if (setTimeMatch) {
-        const timeInput = setTimeMatch[1].trim();
+        const input = setTimeMatch[1].trim();
         
-        if (!timeInput) {
+        if (!input) {
             await sendMessage(chatId, `
 ❌ <b>Please specify a time</b>
 
 Examples:
-• <code>/set_reminder_time 6pm</code>
-• <code>/set_reminder_time 18:00</code>
-• <code>/set_reminder_time 9:30am</code>
-• <code>/set_reminder_time 21</code>
+• <code>/set_reminder_time 6pm EST</code> - 6 PM Eastern
+• <code>/set_reminder_time 18:00 PST</code> - 6 PM Pacific  
+• <code>/set_reminder_time 9:30am</code> - 9:30 AM (your timezone)
+• <code>/set_reminder_time 21</code> - 9 PM (your timezone)
 
-All times are in UTC timezone.
+Include timezone or it will use your saved timezone setting.
             `.trim(), 'HTML', messageId);
             return;
+        }
+        
+        // Parse time and timezone from input
+        const parts = input.split(' ');
+        let timeInput: string;
+        let timezoneInput: string | null = null;
+        
+        if (parts.length >= 2) {
+            // Time and timezone provided
+            timeInput = parts[0];
+            timezoneInput = parts.slice(1).join(' ');
+        } else {
+            // Only time provided, use user's saved timezone
+            timeInput = input;
+            const userData = await getUserReminderData(chatId);
+            timezoneInput = userData?.timezone || 'UTC';
         }
         
         const parsedTime = parseReminderTime(timeInput);
@@ -675,24 +933,47 @@ Please use one of these formats:
 • <b>24-hour:</b> 18:00, 09:30, 23:45
 • <b>Hour only:</b> 18, 9, 23
 
-All times are in UTC timezone.
+Example: <code>/set_reminder_time 6pm EST</code>
             `.trim(), 'HTML', messageId);
             return;
         }
         
-        await setUserReminderTime(chatId, parsedTime);
-        const displayTime = formatTimeForDisplay(parsedTime);
+        let finalTimezone = 'UTC';
+        if (timezoneInput && timezoneInput !== 'UTC') {
+            const parsedTimezone = parseTimezone(timezoneInput);
+            if (!parsedTimezone) {
+                await sendMessage(chatId, `
+❌ <b>Timezone not recognized: ${timezoneInput}</b>
+
+Use /set_timezone first to set your timezone, or specify a valid timezone:
+EST, PST, CET, JST, IST, UTC, etc.
+
+Example: <code>/set_reminder_time 6pm EST</code>
+                `.trim(), 'HTML', messageId);
+                return;
+            }
+            finalTimezone = parsedTimezone;
+        } else {
+            finalTimezone = timezoneInput || 'UTC';
+        }
         
-        const confirmMessage = `
+        try {
+            await setUserReminderTime(chatId, parsedTime, finalTimezone);
+            const displayTime = formatTimeForDisplayWithTimezone(parsedTime, finalTimezone);
+            
+            const confirmMessage = `
 ✅ <b>Reminder Time Updated!</b>
 
-Your daily contributor task reminders are now set for <b>${displayTime}</b>.
+Your daily contributor task reminders are now set for:
+<b>${displayTime}</b>
 
-You will receive reminders at this time every day to help maintain your Ethos Network streak.
-
-<i>Remember: All times are in UTC. Use /get_reminder_time to check your current setting.</i>
-        `.trim();
-        await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+You will receive reminders at this time every day in your local timezone to help maintain your Ethos Network streak.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        } catch (error) {
+            console.error('Error setting reminder time:', error);
+            await sendMessage(chatId, '❌ Error setting reminder time. Please try again.', 'HTML', messageId);
+        }
         return;
     }
     
