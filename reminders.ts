@@ -5,20 +5,14 @@ import { sendMessage } from './telegram.ts';
 const REMINDER_MESSAGE = `
 🔔 <b>Daily Reminder: Keep Your Ethos Streak Alive!</b>
 
-Don't forget to complete your contributor tasks today to maintain your streak on the Ethos Network!
-
-✅ <b>What you can do:</b>
-• Review other users' profiles
-• Vouch for trusted community members
-• Participate in network governance
-• Share valuable insights and feedback
+Don't forget to complete your contributor tasks today to maintain your streak!
 
 ⏰ <b>Time remaining:</b> Until midnight UTC (00:00)
 
 🚀 <b>Why it matters:</b>
 Consistent daily engagement helps build your reputation and strengthens the entire Ethos community.
 
-<i>Use /stop_reminders to disable or /set_reminder_time to change your reminder time.</i>
+<i>Use /stop_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
 `.trim();
 
 // Function to send reminders to users scheduled for a specific hour
@@ -73,13 +67,7 @@ export const TEST_REMINDER_MESSAGE = (testHour: number) => `
 
 This is a test of the daily reminder system. Testing for hour ${testHour}:00 UTC.
 
-Don't forget to complete your contributor tasks today to maintain your streak on the Ethos Network!
+Don't forget to complete your contributor tasks today to maintain your streak!
 
-✅ <b>What you can do:</b>
-• Review other users' profiles
-• Vouch for trusted community members
-• Participate in network governance
-• Share valuable insights and feedback
-
-<i>This was a test message. Use /set_reminder_time to change your reminder time or /stop_reminders to disable.</i>
+<i>This was a test message. Use /stop_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
 `.trim(); 
