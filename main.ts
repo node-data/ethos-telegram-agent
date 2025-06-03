@@ -222,6 +222,17 @@ function parseTimezone(timezoneInput: string): string | null {
     const gmtMatch = cleaned.match(/^(GMT|UTC)([+-])(\d{1,2})(?::?(\d{2}))?$/i);
     if (gmtMatch) {
         const [, , sign, hours, minutes = '00'] = gmtMatch;
+        const hourNum = parseInt(hours);
+        const minNum = parseInt(minutes);
+        
+        // Validate timezone range (-12 to +14 hours, 0-59 minutes)
+        if (hourNum < 0 || hourNum > 14 || minNum < 0 || minNum > 59) {
+            return null;
+        }
+        if (sign === '-' && hourNum > 12) {
+            return null; // GMT-13 or below doesn't exist
+        }
+        
         const hourStr = hours.padStart(2, '0');
         const minStr = minutes.padStart(2, '0');
         return `${sign}${hourStr}:${minStr}`;
@@ -231,6 +242,17 @@ function parseTimezone(timezoneInput: string): string | null {
     const offsetMatch = cleaned.match(/^([+-])(\d{1,2})(?::?(\d{2}))?$/);
     if (offsetMatch) {
         const [, sign, hours, minutes = '00'] = offsetMatch;
+        const hourNum = parseInt(hours);
+        const minNum = parseInt(minutes);
+        
+        // Validate timezone range (-12 to +14 hours, 0-59 minutes)
+        if (hourNum < 0 || hourNum > 14 || minNum < 0 || minNum > 59) {
+            return null;
+        }
+        if (sign === '-' && hourNum > 12) {
+            return null; // -13 or below doesn't exist
+        }
+        
         const hourStr = hours.padStart(2, '0');
         const minStr = minutes.padStart(2, '0');
         return `${sign}${hourStr}:${minStr}`;
@@ -260,9 +282,22 @@ function parseTimezone(timezoneInput: string): string | null {
         }
     }
     
-    // Check for UTC offset format like +05:30, -08:00 (already handled above but keeping for clarity)
-    if (/^[+-]\d{2}:\d{2}$/.test(cleaned)) {
-        return cleaned;
+    // Check for UTC offset format like +05:30, -08:00 and validate range
+    const standardOffsetMatch = cleaned.match(/^([+-])(\d{2}):(\d{2})$/);
+    if (standardOffsetMatch) {
+        const [, sign, hours, minutes] = standardOffsetMatch;
+        const hourNum = parseInt(hours);
+        const minNum = parseInt(minutes);
+        
+        // Validate timezone range
+        if (hourNum < 0 || hourNum > 14 || minNum < 0 || minNum > 59) {
+            return null;
+        }
+        if (sign === '-' && hourNum > 12) {
+            return null;
+        }
+        
+        return cleaned; // Already in correct format
     }
     
     return null;
@@ -875,7 +910,7 @@ Use timezone abbreviations, GMT+/-N, UTC+/-N, or UTC offset format.
         
         if (!parsedTimezone) {
             await sendMessage(chatId, `
-❌ <b>Timezone not recognized</b>
+❌ <b>Timezone not recognized or invalid</b>
 
 Supported timezone formats:
 <b>Abbreviations:</b> EST, PST, CET, JST, IST, AEST, etc.
@@ -883,10 +918,13 @@ Supported timezone formats:
 <b>UTC format:</b> UTC+8, UTC-5, UTC+5:30
 <b>Offset format:</b> +08:00, -05:00, +09:30
 
+<b>Valid range:</b> GMT-12 to GMT+14 (world's actual timezone range)
+
 Examples for common regions:
 • <b>Asia:</b> GMT+8 (China), GMT+9 (Japan), GMT+5:30 (India)
 • <b>Europe:</b> GMT+1 (CET), GMT+0 (GMT/UTC)
 • <b>US:</b> GMT-5 (EST), GMT-8 (PST), GMT-6 (CST)
+• <b>Extreme:</b> GMT+14 (Line Islands), GMT-12 (Baker Island)
             `.trim(), 'HTML', messageId);
             return;
         }
