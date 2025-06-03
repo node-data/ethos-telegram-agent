@@ -8,6 +8,7 @@ try {
     console.log('No .env file found, using environment variables');
 }
 
+// @ts-ignore - Deno global is available in Deno runtime
 const token = env.BOT_TOKEN || Deno.env.get("BOT_TOKEN");
 
 if (!token) {
@@ -19,7 +20,111 @@ if (!token) {
 const TELEGRAM_API = `https://api.telegram.org/bot${token}`;
 const ETHOS_API_BASE = 'https://api.ethos.network';
 
+// Initialize Deno KV for user tracking
+// @ts-ignore - Deno global is available in Deno runtime
+const kv = await Deno.openKv();
+
 console.log('🤖 Telegram bot is starting on Deno Deploy...');
+
+// User tracking functions
+async function addUserToReminders(chatId: number): Promise<void> {
+    try {
+        await kv.set(["users", "reminders", chatId.toString()], {
+            chatId,
+            addedAt: new Date().toISOString(),
+            active: true
+        });
+        console.log(`Added user ${chatId} to reminder list`);
+    } catch (error) {
+        console.error('Error adding user to reminders:', error);
+    }
+}
+
+async function removeUserFromReminders(chatId: number): Promise<void> {
+    try {
+        await kv.delete(["users", "reminders", chatId.toString()]);
+        console.log(`Removed user ${chatId} from reminder list`);
+    } catch (error) {
+        console.error('Error removing user from reminders:', error);
+    }
+}
+
+async function getAllReminderUsers(): Promise<number[]> {
+    try {
+        const users: number[] = [];
+        const iter = kv.list({ prefix: ["users", "reminders"] });
+        
+        for await (const entry of iter) {
+            const userData = entry.value as { chatId: number; active: boolean };
+            if (userData.active) {
+                users.push(userData.chatId);
+            }
+        }
+        
+        return users;
+    } catch (error) {
+        console.error('Error getting reminder users:', error);
+        return [];
+    }
+}
+
+// Daily reminder cron job - runs at 22:00 UTC (2 hours before midnight)
+// @ts-ignore - Deno global is available in Deno runtime
+Deno.cron("Daily Contributor Task Reminder", "0 22 * * *", async () => {
+    console.log('🔔 Running daily contributor task reminder...');
+    
+    try {
+        const users = await getAllReminderUsers();
+        console.log(`Sending reminders to ${users.length} users`);
+        
+        const reminderMessage = `
+🔔 <b>Daily Reminder: Keep Your Ethos Streak Alive!</b>
+
+Don't forget to complete your contributor tasks today to maintain your streak on the Ethos Network!
+
+✅ <b>What you can do:</b>
+• Review other users' profiles
+• Vouch for trusted community members
+• Participate in network governance
+• Share valuable insights and feedback
+
+⏰ <b>Time remaining:</b> Less than 2 hours until reset (00:00 UTC)
+
+🚀 <b>Why it matters:</b>
+Consistent daily engagement helps build your reputation and strengthens the entire Ethos community.
+
+<i>Use /stop_reminders if you no longer want to receive these daily notifications.</i>
+        `.trim();
+        
+        let successCount = 0;
+        let failureCount = 0;
+        
+        // Send reminders to all users (with rate limiting)
+        for (const chatId of users) {
+            try {
+                await sendMessage(chatId, reminderMessage, 'HTML');
+                successCount++;
+                
+                // Add small delay to avoid rate limiting
+                if (users.length > 10) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            } catch (error) {
+                console.error(`Failed to send reminder to user ${chatId}:`, error);
+                failureCount++;
+                
+                // If user blocked the bot or chat doesn't exist, remove them
+                if (error.error_code === 403 || error.error_code === 400) {
+                    await removeUserFromReminders(chatId);
+                }
+            }
+        }
+        
+        console.log(`✅ Reminder summary: ${successCount} sent, ${failureCount} failed`);
+    } catch (error) {
+        console.error('Error in daily reminder cron job:', error);
+    }
+});
 
 // Helper function to determine userkey format
 function formatUserkey(input: string): string {
@@ -301,6 +406,11 @@ async function handleUpdate(update: any) {
     const messageId = message.message_id;
     const text = message.text;
     
+    // Auto-add users to reminder list when they interact (except for stop command)
+    if (!text.startsWith('/stop_reminders')) {
+        await addUserToReminders(chatId);
+    }
+    
     // Handle /start command
     if (text === '/start') {
         const welcomeMessage = `
@@ -311,6 +421,8 @@ I can help you look up Ethos Network profiles using Twitter handles or EVM walle
 Type /help to see available commands.
 
 💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
+
+🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders at 22:00 UTC. Use /stop_reminders if you don't want these.
         `;
         await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
@@ -324,6 +436,8 @@ Type /help to see available commands.
 /start - Show welcome message
 /help - Show this help message
 /profile &lt;handle_or_address&gt; - Get Ethos profile information
+/start_reminders - Enable daily contributor task reminders
+/stop_reminders - Disable daily contributor task reminders
 
 <b>Examples:</b>
 • <code>/profile vitalikbuterin</code> - Look up Twitter handle
@@ -334,9 +448,46 @@ Type /help to see available commands.
 • Send any Twitter profile URL (like https://twitter.com/vitalikbuterin or https://x.com/vitalikbuterin)
 • I'll automatically extract the username and show the Ethos profile!
 
+<b>Daily Reminders:</b>
+• Get reminded at 22:00 UTC (2 hours before midnight) to complete your contributor tasks
+• Helps you maintain your Ethos Network streak
+
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
         `;
         await sendMessage(chatId, helpMessage, 'HTML', messageId);
+        return;
+    }
+    
+    // Handle /start_reminders command
+    if (text === '/start_reminders') {
+        await addUserToReminders(chatId);
+        const confirmMessage = `
+✅ <b>Daily Reminders Enabled!</b>
+
+You will now receive daily contributor task reminders at 22:00 UTC (2 hours before the daily reset).
+
+These reminders help you maintain your streak on the Ethos Network by completing tasks like:
+• Reviewing profiles
+• Vouching for trusted users
+• Participating in governance
+
+Use /stop_reminders anytime to disable these notifications.
+        `.trim();
+        await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        return;
+    }
+    
+    // Handle /stop_reminders command
+    if (text === '/stop_reminders') {
+        await removeUserFromReminders(chatId);
+        const confirmMessage = `
+🔕 <b>Daily Reminders Disabled</b>
+
+You will no longer receive daily contributor task reminders.
+
+You can re-enable them anytime by using /start_reminders or by interacting with the bot again.
+        `.trim();
+        await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         return;
     }
     
@@ -438,6 +589,63 @@ async function handler(request: Request): Promise<Response> {
     // Health check endpoint
     if (url.pathname === '/health') {
         return new Response('OK', { status: 200 });
+    }
+    
+    // Test reminder endpoint (for testing the reminder functionality)
+    if (url.pathname === '/test-reminder' && request.method === 'GET') {
+        try {
+            const users = await getAllReminderUsers();
+            const count = users.length;
+            
+            const reminderMessage = `
+🔔 <b>TEST: Daily Reminder - Keep Your Ethos Streak Alive!</b>
+
+This is a test of the daily reminder system. The actual reminders are sent at 22:00 UTC.
+
+Don't forget to complete your contributor tasks today to maintain your streak on the Ethos Network!
+
+✅ <b>What you can do:</b>
+• Review other users' profiles
+• Vouch for trusted community members
+• Participate in network governance
+• Share valuable insights and feedback
+
+<i>This was a test message. Use /stop_reminders if you don't want daily notifications.</i>
+            `.trim();
+            
+            let successCount = 0;
+            let failureCount = 0;
+            
+            // Send test reminders to all users
+            for (const chatId of users) {
+                try {
+                    await sendMessage(chatId, reminderMessage, 'HTML');
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to send test reminder to user ${chatId}:`, error);
+                    failureCount++;
+                }
+            }
+            
+            return new Response(JSON.stringify({
+                success: true,
+                totalUsers: count,
+                sent: successCount,
+                failed: failureCount,
+                message: `Test reminder sent to ${successCount}/${count} users`
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('Test reminder error:', error);
+            return new Response(JSON.stringify({ 
+                success: false, 
+                error: error instanceof Error ? error.message : 'Unknown error' 
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
     }
     
     // Webhook endpoint for Telegram
