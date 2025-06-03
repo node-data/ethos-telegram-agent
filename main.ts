@@ -1,6 +1,6 @@
 import { TELEGRAM_API } from './config.ts';
 import { handleUpdate } from './handlers.ts';
-import { sendRemindersForHour, TEST_REMINDER_MESSAGE } from './reminders.ts';
+import { sendRemindersForHour, TEST_REMINDER_MESSAGE, sendMidnightNotifications } from './reminders.ts';
 import { 
     getAllReminderUsers, 
     getUsersForReminderTime, 
@@ -15,6 +15,12 @@ console.log('🤖 Telegram bot is starting on Deno Deploy...');
 Deno.cron("Hourly Contributor Task Reminder Check", "0 * * * *", async () => {
     const currentHour = new Date().getUTCHours();
     await sendRemindersForHour(currentHour);
+});
+
+// Midnight notification cron job - sends notification to all users at midnight UTC
+// @ts-ignore - Deno global is available in Deno runtime
+Deno.cron("Midnight Contributor Task Reset Notification", "0 0 * * *", async () => {
+    await sendMidnightNotifications();
 });
 
 // HTTP handler for Deno Deploy
