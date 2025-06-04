@@ -107,7 +107,7 @@ The modular structure provides:
 - **Code Reusability**: Functions can be easily imported across modules
 - **Clear Dependencies**: Import statements show module relationships
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - [Deno](https://deno.land/) installed
@@ -135,7 +135,7 @@ deno task start
 deno task dev
 ```
 
-## 🌐 Deployment
+## Deployment
 
 ### Deno Deploy (Recommended - FREE)
 
@@ -190,7 +190,7 @@ The bot uses these environment variables:
 
 - `BOT_TOKEN` - Your Telegram bot token (required)
 
-## 🦕 Why Deno?
+## Why Deno?
 
 - **No package.json** - Direct URL imports
 - **Built-in TypeScript** - Better type safety
@@ -198,6 +198,6 @@ The bot uses these environment variables:
 - **Modern runtime** - Latest JavaScript features
 - **Zero config** - Works out of the box
 
-## 📝 License
+## License
 
 MIT License 

@@ -18,7 +18,7 @@ const MIDNIGHT_NOTIFICATION = `
 
 Your contributor tasks are available again!
 
-✨ <b>Ready to contribute?</b> Start your streak or keep it going today!
+<b>Ready to contribute?</b> Start your streak or keep it going today!
 
 <i>Use /stop_reminders to disable notifications or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
 `.trim();
