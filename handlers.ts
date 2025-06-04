@@ -20,8 +20,8 @@ export async function handleUpdate(update: any) {
     const messageId = message.message_id;
     const text = message.text;
     
-    // Auto-add users to reminder list when they interact (except for stop command)
-    if (!text.startsWith('/stop_reminders')) {
+    // Auto-add users to reminder list when they interact (except for stop/disable commands)
+    if (!text.startsWith('/disable_task_reminders') && !text.startsWith('/stop_reminders')) {
         await addUserToReminders(chatId);
     }
     
@@ -36,7 +36,7 @@ Type /help to see available commands.
 
 💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
 
-🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders 2 hours before reset[10:00 PM UTC]. Use /set_reminder_time to change your preferred UTC time, or /stop_reminders if you don't want these.
+🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders 2 hours before reset[10:00 PM UTC]. Use /set_reminder_time to change your preferred UTC time, or /disable_task_reminders if you don't want these.
 
 🌅 <b>Task Refresh Notifications:</b> You'll also receive daily reset notifications at midnight UTC. Use /disable_task_refresh to turn these off if you prefer.
         `;
@@ -54,8 +54,8 @@ Type /help to see available commands.
 /profile &lt;handle_or_address&gt; - Get Ethos profile information
 
 <b>Reminder Commands:</b>
-/start_reminders - Enable daily contributor task reminders
-/stop_reminders - Disable daily contributor task reminders
+/enable_task_reminders - Enable daily contributor task reminders
+/disable_task_reminders - Disable daily contributor task reminders
 /set_reminder_time &lt;time&gt; - Set your preferred reminder time (UTC)
 /get_reminder_time - Check your current reminder time
 
@@ -90,7 +90,35 @@ The bot will fetch profile data from the Ethos Network including reviews, vouche
         return;
     }
     
-    // Handle /start_reminders command
+    // Handle /enable_task_reminders command
+    if (text === '/enable_task_reminders') {
+        await addUserToReminders(chatId);
+        const confirmMessage = `
+✅ <b>Daily Reminders Enabled!</b>
+
+You will now receive daily contributor task reminders at 22:00 UTC (2 hours before the daily reset).
+
+Use /disable_task_reminders anytime to disable these notifications.
+        `.trim();
+        await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        return;
+    }
+    
+    // Handle /disable_task_reminders command
+    if (text === '/disable_task_reminders') {
+        await removeUserFromReminders(chatId);
+        const confirmMessage = `
+🔕 <b>Daily Reminders Disabled</b>
+
+You will no longer receive daily contributor task reminders.
+
+You can re-enable them anytime by using /enable_task_reminders.
+        `.trim();
+        await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        return;
+    }
+    
+    // Keep old command names for backward compatibility
     if (text === '/start_reminders') {
         await addUserToReminders(chatId);
         const confirmMessage = `
@@ -103,13 +131,15 @@ These reminders help you maintain your streak on the Ethos Network by completing
 • Vouching for trusted users
 • Participating in governance
 
-Use /stop_reminders anytime to disable these notifications.
+Use /disable_task_reminders anytime to disable these notifications.
+
+<i>Note: /start_reminders is now /enable_task_reminders for consistency.</i>
         `.trim();
         await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         return;
     }
-    
-    // Handle /stop_reminders command
+
+    // Keep old command names for backward compatibility
     if (text === '/stop_reminders') {
         await removeUserFromReminders(chatId);
         const confirmMessage = `
@@ -117,7 +147,9 @@ Use /stop_reminders anytime to disable these notifications.
 
 You will no longer receive daily contributor task reminders.
 
-You can re-enable them anytime by using /start_reminders or by interacting with the bot again.
+You can re-enable them anytime by using /enable_task_reminders.
+
+<i>Note: /stop_reminders is now /disable_task_reminders for consistency.</i>
         `.trim();
         await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         return;
@@ -137,7 +169,7 @@ You can re-enable them anytime by using /start_reminders or by interacting with 
 
 You will receive daily contributor task reminders at <b>${displayTime}</b>.
 
-Use /set_reminder_time to change your time or /stop_reminders to disable them completely.
+Use /set_reminder_time to change your time or /disable_task_reminders to disable them completely.
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         } else {
@@ -146,7 +178,7 @@ Use /set_reminder_time to change your time or /stop_reminders to disable them co
 
 You don't currently have daily reminders enabled.
 
-Use /start_reminders to enable reminders or use /set_reminder_time to set a custom time in UTC.
+Use /enable_task_reminders to enable reminders or use /set_reminder_time to set a custom time in UTC.
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         }

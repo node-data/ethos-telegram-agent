@@ -9,10 +9,10 @@ Don't forget to complete your contributor tasks today to maintain your streak!
 
 ⏰ <b>Time remaining:</b> Until midnight UTC (00:00)
 
-<i>Use /stop_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
+<i>Use /disable_task_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
 `.trim();
 
-// Midnight notification message content
+// Task refresh notification message content
 const TASK_REFRESH_NOTIFICATION = `
 🌅 <b>New Day, New Opportunities!</b>
 
@@ -20,7 +20,7 @@ Your contributor tasks are available again!
 
 <b>Ready to contribute?</b> Start your streak or keep it going today!
 
-<i>Use /stop_reminders to disable notifications or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
+<i>Use /disable_task_reminders to disable notifications or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
 `.trim();
 
 // Inline keyboard with button to open Ethos homepage
@@ -136,5 +136,5 @@ This is a test of the daily reminder system. Testing for hour ${testHour}:00 UTC
 
 Don't forget to complete your contributor tasks today to maintain your streak!
 
-<i>This was a test message. Use /stop_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
+<i>This was a test message. Use /disable_task_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
 `.trim(); 

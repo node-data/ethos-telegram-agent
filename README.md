@@ -68,8 +68,8 @@ The codebase is organized into focused modules for better maintainability:
 - `/profile <handle_or_address>` - Look up Ethos profile
 
 **Reminder Commands:**
-- `/start_reminders` - Enable daily reminders
-- `/stop_reminders` - Disable daily reminders
+- `/enable_task_reminders` - Enable daily reminders
+- `/disable_task_reminders` - Disable daily reminders
 - `/set_reminder_time <time>` - Set custom reminder time (UTC)
 - `/get_reminder_time` - Check current reminder settings
 
@@ -77,6 +77,10 @@ The codebase is organized into focused modules for better maintainability:
 - `/enable_task_refresh` - Enable daily reset notifications at midnight UTC
 - `/disable_task_refresh` - Disable task refresh notifications
 - `/get_task_refresh` - Check your task refresh notification status
+
+**Legacy Commands (for backward compatibility):**
+- `/start_reminders` - Same as `/enable_task_reminders`
+- `/stop_reminders` - Same as `/disable_task_reminders`
 
 ## Notification Types
 
