@@ -69,6 +69,7 @@ Type /help to see available commands.
 <b>Auto-detection:</b>
 • Send any Twitter profile URL (like https://twitter.com/ethos_network or https://x.com/ethos_network)
 • I'll automatically extract the username and show the Ethos profile!
+• To do this in groups I need admin access but you can turn off the permissions.
 
 <b>Daily Reminders:</b>
 • Get reminded at your chosen UTC time to complete contributor tasks
