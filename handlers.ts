@@ -28,17 +28,17 @@ export async function handleUpdate(update: any) {
     // Handle /start command
     if (text === '/start') {
         const welcomeMessage = `
-🎉 Welcome to the Ethos Agent!
+<b>Welcome to the Ethos Agent!</b>
 
 I can help you look up Ethos Network profiles using Twitter handles or EVM wallet addresses.
 
 Type /help to see available commands.
 
-💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
+You can also just send me a Twitter profile URL and I'll automatically look it up!
 
-🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders 2 hours before reset[10:00 PM UTC]. Use /set_reminder_time to change your preferred UTC time, or /disable_task_reminders if you don't want these.
+<b>Daily task reminders:</b> You've been automatically signed up for daily contributor task reminders 2 hours before reset[10:00 PM UTC]. Use /set_reminder_time to change your preferred UTC time, or /disable_task_reminders if you don't want these.
 
-🌅 <b>Task Refresh Notifications:</b> You'll also receive daily reset notifications at midnight UTC. Use /disable_task_refresh to turn these off if you prefer.
+<b>Task refresh notifications:</b> You'll also receive daily reset notifications at midnight UTC. Use /disable_task_refresh to turn these off if you prefer.
         `;
         await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
@@ -47,7 +47,7 @@ Type /help to see available commands.
     // Handle /help command
     if (text === '/help') {
         const helpMessage = `
-🤖 <b>Ethos Agent Commands:</b>
+<b>Ethos Agent Commands:</b>
 
 /start - Show welcome message
 /help - Show this help message
@@ -126,11 +126,6 @@ You can re-enable them anytime by using /enable_task_reminders.
 
 You will now receive daily contributor task reminders at 22:00 UTC (2 hours before the daily reset).
 
-These reminders help you maintain your streak on the Ethos Network by completing tasks like:
-• Reviewing profiles
-• Vouching for trusted users
-• Participating in governance
-
 Use /disable_task_reminders anytime to disable these notifications.
 
 <i>Note: /start_reminders is now /enable_task_reminders for consistency.</i>
@@ -163,7 +158,7 @@ You can re-enable them anytime by using /enable_task_reminders.
             const displayTime = formatTimeForDisplay(reminderTime);
             
             const confirmMessage = `
-🕐 <b>Your Current Reminder Settings</b>
+<b>Your Current Reminder Settings</b>
 
 <b>UTC Time:</b> ${displayTime}
 
@@ -197,7 +192,6 @@ Use /enable_task_reminders to enable reminders or use /set_reminder_time to set 
 Examples:
 • <code>/set_reminder_time 6pm</code> - 6:00 PM UTC
 • <code>/set_reminder_time 18:00</code> - 6:00 PM UTC
-
 
 All times are in UTC timezone.
             `.trim(), 'HTML', messageId);
@@ -243,7 +237,7 @@ You will receive reminders at <b>${displayTime}</b> every day to help maintain y
         try {
             await setUserTaskRefreshNotifications(chatId, true);
             const confirmMessage = `
-🌅 <b>Task Refresh Notifications Enabled!</b>
+<b>Task refresh notifications enabled</b>
 
 You will now receive daily reset notifications at midnight UTC (00:00).
 
@@ -297,7 +291,7 @@ Use /enable_task_refresh to start receiving daily reset notifications at midnigh
                 await sendMessage(chatId, confirmMessage, 'HTML', messageId);
             } else if (taskRefreshEnabled) {
                 const confirmMessage = `
-🌅 <b>Task Refresh Notifications: ENABLED</b>
+<b>Task Refresh Notifications: ENABLED</b>
 
 You will receive daily reset notifications at midnight UTC (00:00) when new contributor tasks become available.
 
@@ -369,7 +363,7 @@ Use /enable_task_refresh to turn these on.
         const input = profileMatch[1].trim();
         
         if (!input) {
-            await sendMessage(chatId, '❌ Please provide a Twitter handle or EVM address.\n\nExample: <code>/profile VitalikButerin</code>', 'HTML', messageId);
+            await sendMessage(chatId, '❌ Please provide a Twitter handle or EVM address.\n\nExample: <code>/profile ethos_network</code>', 'HTML', messageId);
             return;
         }
         

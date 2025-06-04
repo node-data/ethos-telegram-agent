@@ -101,7 +101,7 @@ async function handler(request: Request): Promise<Response> {
             for (const chatId of taskRefreshUsers) {
                 try {
                     const testMessage = `
-🌅 <b>TEST: New Day, New Opportunities!</b>
+<b>TEST: New Day, New Opportunities!</b>
 
 This is a test of the task refresh notification system.
 

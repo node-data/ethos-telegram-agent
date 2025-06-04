@@ -3,7 +3,7 @@ import { sendMessage } from './telegram.ts';
 
 // Reminder message content
 const REMINDER_MESSAGE = `
-🔔 <b>Daily Reminder: Keep Your Ethos Streak Alive!</b>
+🔔 <b>Daily Reminder: Keep Your Streak Alive!</b>
 
 Don't forget to complete your contributor tasks today to maintain your streak!
 
@@ -14,7 +14,7 @@ Don't forget to complete your contributor tasks today to maintain your streak!
 
 // Task refresh notification message content
 const TASK_REFRESH_NOTIFICATION = `
-🌅 <b>New Day, New Opportunities!</b>
+<b>New Day, New Opportunities!</b>
 
 Your contributor tasks are available again!
 
