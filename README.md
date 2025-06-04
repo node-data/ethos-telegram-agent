@@ -142,7 +142,7 @@ deno task dev
 1. **Push to GitHub**
 2. **Go to [dash.deno.com](https://dash.deno.com)**
 3. **Create new project** → Connect GitHub repo
-4. **Select `deno-bot.ts` as entry point**
+4. **Select `main.ts` as entry point**
 5. **Add environment variable**: `BOT_TOKEN=your_token`
 6. **Deploy!**
 
@@ -153,23 +153,34 @@ deno task dev
 
 ## 🛠️ Commands
 
-- `/start` - Welcome message
-- `/help` - Show available commands
+- `/start` - Welcome message and auto-enrollment in reminders
+- `/help` - Show available commands and examples
 - `/profile <handle_or_address>` - Get Ethos profile
+- `/start_reminders` - Enable daily contributor reminders
+- `/stop_reminders` - Disable daily reminders
+- `/set_reminder_time <time>` - Set custom reminder time (UTC)
+- `/get_reminder_time` - Check current reminder settings
 
 ### Examples
-- `/profile vitalikbuterin`
-- `/profile @buz_eth`
+- `/profile ethos_network`
+- `/profile @ethos_network`
 - `/profile 0x1234...abcd`
 
 ## 📁 Project Structure
 
 ```
 telegram-bot/
-├── deno-bot.ts      # Main bot file
-├── deno.json        # Deno configuration
-├── .env.example     # Environment variables template
-├── .env             # Your environment variables (gitignored)
+├── main.ts          # Main entry point with HTTP server and cron jobs
+├── config.ts        # Environment variables and API configuration
+├── database.ts      # Deno KV database operations
+├── handlers.ts      # Message handling and command processing
+├── telegram.ts      # Telegram Bot API helper functions
+├── ethos.ts         # Ethos Network API integration
+├── utils.ts         # Time parsing and formatting utilities
+├── reminders.ts     # Reminder functionality and cron jobs
+├── deno.json        # Deno configuration and tasks
+├── deno.lock        # Dependency lock file
+├── .gitignore       # Git ignore rules
 └── README.md        # This file
 ```
 
