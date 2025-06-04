@@ -1,10 +1,11 @@
 import { TELEGRAM_API } from './config.ts';
 import { handleUpdate } from './handlers.ts';
-import { sendRemindersForHour, TEST_REMINDER_MESSAGE, sendMidnightNotifications } from './reminders.ts';
+import { sendRemindersForHour, TEST_REMINDER_MESSAGE, sendTaskRefreshNotifications } from './reminders.ts';
 import { 
     getAllReminderUsers, 
     getUsersForReminderTime, 
-    getReminderTimeStats 
+    getReminderTimeStats,
+    getUsersForTaskRefreshNotifications 
 } from './database.ts';
 import { sendMessage } from './telegram.ts';
 
@@ -17,10 +18,10 @@ Deno.cron("Hourly Contributor Task Reminder Check", "0 * * * *", async () => {
     await sendRemindersForHour(currentHour);
 });
 
-// Midnight notification cron job - sends notification to all users at midnight UTC
+// Task refresh notification cron job - sends notification to opted-in users at midnight UTC
 // @ts-ignore - Deno global is available in Deno runtime
-Deno.cron("Midnight Contributor Task Reset Notification", "0 0 * * *", async () => {
-    await sendMidnightNotifications();
+Deno.cron("Daily Task Refresh Notification", "0 0 * * *", async () => {
+    await sendTaskRefreshNotifications();
 });
 
 // HTTP handler for Deno Deploy
@@ -77,6 +78,61 @@ async function handler(request: Request): Promise<Response> {
             });
         } catch (error) {
             console.error('Test reminder error:', error);
+            return new Response(JSON.stringify({ 
+                success: false, 
+                error: error instanceof Error ? error.message : 'Unknown error' 
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    }
+    
+    // Test task refresh notifications endpoint
+    if (url.pathname === '/test-task-refresh' && request.method === 'GET') {
+        try {
+            const allUsers = await getAllReminderUsers();
+            const taskRefreshUsers = await getUsersForTaskRefreshNotifications();
+            
+            let successCount = 0;
+            let failureCount = 0;
+            
+            // Send test task refresh notifications to opted-in users
+            for (const chatId of taskRefreshUsers) {
+                try {
+                    const testMessage = `
+🌅 <b>TEST: New Day, New Opportunities!</b>
+
+This is a test of the task refresh notification system.
+
+Your contributor tasks are available again!
+
+<b>Ready to contribute?</b> Start your streak or keep it going today!
+
+<i>This was a test message. Use /disable_task_refresh to turn these off.</i>
+                    `.trim();
+                    
+                    await sendMessage(chatId, testMessage, 'HTML');
+                    successCount++;
+                } catch (error) {
+                    console.error(`Failed to send test task refresh notification to user ${chatId}:`, error);
+                    failureCount++;
+                }
+            }
+            
+            return new Response(JSON.stringify({
+                success: true,
+                totalUsers: allUsers.length,
+                taskRefreshOptedInUsers: taskRefreshUsers.length,
+                sent: successCount,
+                failed: failureCount,
+                message: `Test task refresh notification sent to ${successCount}/${taskRefreshUsers.length} opted-in users`,
+                optInPercentage: Math.round((taskRefreshUsers.length / Math.max(allUsers.length, 1)) * 100)
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (error) {
+            console.error('Test task refresh notification error:', error);
             return new Response(JSON.stringify({ 
                 success: false, 
                 error: error instanceof Error ? error.message : 'Unknown error' 

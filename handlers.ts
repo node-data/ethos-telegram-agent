@@ -1,5 +1,5 @@
 import { sendMessage, sendChatAction, sendPhoto } from './telegram.ts';
-import { addUserToReminders, removeUserFromReminders, getUserReminderTime, setUserReminderTime } from './database.ts';
+import { addUserToReminders, removeUserFromReminders, getUserReminderTime, setUserReminderTime, setUserTaskRefreshNotifications, getUserTaskRefreshNotifications } from './database.ts';
 import { parseReminderTime, formatTimeForDisplay } from './utils.ts';
 import { 
     formatUserkey, 
@@ -37,6 +37,8 @@ Type /help to see available commands.
 💡 <b>Pro tip:</b> You can also just send me a Twitter profile URL and I'll automatically look it up!
 
 🔔 <b>Daily Reminders:</b> You've been automatically signed up for daily contributor task reminders 2 hours before reset[10:00 PM UTC]. Use /set_reminder_time to change your preferred UTC time, or /stop_reminders if you don't want these.
+
+🌅 <b>Task Refresh Notifications:</b> You'll also receive daily reset notifications at midnight UTC. Use /disable_task_refresh to turn these off if you prefer.
         `;
         await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
         return;
@@ -57,6 +59,11 @@ Type /help to see available commands.
 /set_reminder_time &lt;time&gt; - Set your preferred reminder time (UTC)
 /get_reminder_time - Check your current reminder time
 
+<b>Task Refresh Notification Commands:</b>
+/enable_task_refresh - Enable daily reset notifications at midnight UTC
+/disable_task_refresh - Disable task refresh notifications
+/get_task_refresh - Check your task refresh notification status
+
 <b>Time Examples (UTC):</b>
 • <code>/set_reminder_time 6pm</code> - 6:00 PM UTC
 • <code>/set_reminder_time 18:00</code> - 6:00 PM UTC
@@ -71,9 +78,10 @@ Type /help to see available commands.
 • I'll automatically extract the username and show the Ethos profile!
 • To do this in groups I need admin access but you can turn off the permissions.
 
-<b>Daily Reminders:</b>
-• Get reminded at your chosen UTC time to complete contributor tasks
-• Helps you maintain your Ethos Network streak
+<b>Daily Notifications:</b>
+• <b>Reminders:</b> Get reminded at your chosen UTC time to complete contributor tasks
+• <b>Task Refresh Notifications:</b> Get notified when tasks reset at midnight UTC
+• Both help you maintain your Ethos Network streak
 • All times are in UTC timezone
 
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
@@ -194,6 +202,89 @@ You will receive reminders at <b>${displayTime}</b> every day to help maintain y
         } catch (error) {
             console.error('Error setting reminder time:', error);
             await sendMessage(chatId, '❌ Error setting reminder time. Please try again.', 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /enable_task_refresh command
+    if (text === '/enable_task_refresh') {
+        try {
+            await setUserTaskRefreshNotifications(chatId, true);
+            const confirmMessage = `
+🌅 <b>Task Refresh Notifications Enabled!</b>
+
+You will now receive daily reset notifications at midnight UTC (00:00).
+
+These notifications let you know when:
+• New contributor tasks are available
+• Your daily streak opportunities reset
+• It's time to start contributing for the day
+
+Use /disable_task_refresh to turn these off anytime.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        } catch (error) {
+            console.error('Error enabling task refresh notifications:', error);
+            await sendMessage(chatId, '❌ Error enabling task refresh notifications. Please try again.', 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /disable_task_refresh command
+    if (text === '/disable_task_refresh') {
+        try {
+            await setUserTaskRefreshNotifications(chatId, false);
+            const confirmMessage = `
+🔕 <b>Task Refresh Notifications Disabled</b>
+
+You will no longer receive daily reset notifications at midnight UTC.
+
+You can still receive your regular task reminders if they're enabled. Use /enable_task_refresh to turn task refresh notifications back on anytime.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        } catch (error) {
+            console.error('Error disabling task refresh notifications:', error);
+            await sendMessage(chatId, '❌ Error disabling task refresh notifications. Please try again.', 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /get_task_refresh command
+    if (text === '/get_task_refresh') {
+        try {
+            const taskRefreshEnabled = await getUserTaskRefreshNotifications(chatId);
+            
+            if (taskRefreshEnabled === null) {
+                const confirmMessage = `
+❓ <b>No Settings Found</b>
+
+You haven't interacted with the notification system yet.
+
+Use /enable_task_refresh to start receiving daily reset notifications at midnight UTC.
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            } else if (taskRefreshEnabled) {
+                const confirmMessage = `
+🌅 <b>Task Refresh Notifications: ENABLED</b>
+
+You will receive daily reset notifications at midnight UTC (00:00) when new contributor tasks become available.
+
+Use /disable_task_refresh to turn these off.
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            } else {
+                const confirmMessage = `
+🔕 <b>Task Refresh Notifications: DISABLED</b>
+
+You will not receive daily reset notifications at midnight UTC.
+
+Use /enable_task_refresh to turn these on.
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            }
+        } catch (error) {
+            console.error('Error getting task refresh notifications status:', error);
+            await sendMessage(chatId, '❌ Error checking task refresh notification status. Please try again.', 'HTML', messageId);
         }
         return;
     }

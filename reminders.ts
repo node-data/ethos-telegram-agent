@@ -1,4 +1,4 @@
-import { getUsersForReminderTime, removeUserFromReminders, getAllReminderUsers } from './database.ts';
+import { getUsersForReminderTime, removeUserFromReminders, getUsersForTaskRefreshNotifications } from './database.ts';
 import { sendMessage } from './telegram.ts';
 
 // Reminder message content
@@ -13,7 +13,7 @@ Don't forget to complete your contributor tasks today to maintain your streak!
 `.trim();
 
 // Midnight notification message content
-const MIDNIGHT_NOTIFICATION = `
+const TASK_REFRESH_NOTIFICATION = `
 🌅 <b>New Day, New Opportunities!</b>
 
 Your contributor tasks are available again!
@@ -65,7 +65,7 @@ export async function sendRemindersForHour(currentHour: number): Promise<{ succe
                 failureCount++;
                 
                 // If user blocked the bot or chat doesn't exist, remove them
-                if (error.error_code === 403 || error.error_code === 400) {
+                if ((error as any).error_code === 403 || (error as any).error_code === 400) {
                     await removeUserFromReminders(chatId);
                 }
             }
@@ -79,27 +79,27 @@ export async function sendRemindersForHour(currentHour: number): Promise<{ succe
     }
 }
 
-// Function to send midnight notifications to all users
-export async function sendMidnightNotifications(): Promise<{ success: number; failed: number }> {
-    console.log('🌅 Sending midnight notifications to all users...');
+// Function to send task refresh notifications to opted-in users only
+export async function sendTaskRefreshNotifications(): Promise<{ success: number; failed: number }> {
+    console.log('🌅 Sending task refresh notifications to opted-in users...');
     
     try {
-        const users = await getAllReminderUsers();
+        const users = await getUsersForTaskRefreshNotifications();
         
         if (users.length === 0) {
-            console.log('No users found for midnight notifications');
+            console.log('No users opted in for task refresh notifications');
             return { success: 0, failed: 0 };
         }
         
-        console.log(`Sending midnight notifications to ${users.length} users`);
+        console.log(`Sending task refresh notifications to ${users.length} opted-in users`);
         
         let successCount = 0;
         let failureCount = 0;
         
-        // Send midnight notifications to all users (with rate limiting)
+        // Send task refresh notifications to opted-in users only (with rate limiting)
         for (const chatId of users) {
             try {
-                await sendMessage(chatId, MIDNIGHT_NOTIFICATION, 'HTML', undefined, ETHOS_KEYBOARD);
+                await sendMessage(chatId, TASK_REFRESH_NOTIFICATION, 'HTML', undefined, ETHOS_KEYBOARD);
                 successCount++;
                 
                 // Add small delay to avoid rate limiting
@@ -107,23 +107,26 @@ export async function sendMidnightNotifications(): Promise<{ success: number; fa
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
             } catch (error) {
-                console.error(`Failed to send midnight notification to user ${chatId}:`, error);
+                console.error(`Failed to send task refresh notification to user ${chatId}:`, error);
                 failureCount++;
                 
                 // If user blocked the bot or chat doesn't exist, remove them
-                if (error.error_code === 403 || error.error_code === 400) {
+                if ((error as any).error_code === 403 || (error as any).error_code === 400) {
                     await removeUserFromReminders(chatId);
                 }
             }
         }
         
-        console.log(`✅ Midnight notification summary: ${successCount} sent, ${failureCount} failed`);
+        console.log(`✅ Task refresh notification summary: ${successCount} sent, ${failureCount} failed`);
         return { success: successCount, failed: failureCount };
     } catch (error) {
-        console.error('Error in midnight notification sending:', error);
+        console.error('Error in task refresh notification sending:', error);
         return { success: 0, failed: 0 };
     }
 }
+
+// Keep the old function name for backward compatibility (will be updated in main.ts)
+export const sendMidnightNotifications = sendTaskRefreshNotifications;
 
 // Test reminder message content (for testing endpoint)
 export const TEST_REMINDER_MESSAGE = (testHour: number) => `

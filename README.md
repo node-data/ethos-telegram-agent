@@ -66,10 +66,25 @@ The codebase is organized into focused modules for better maintainability:
 - `/start` - Welcome message and auto-enrollment in reminders
 - `/help` - Comprehensive help with examples
 - `/profile <handle_or_address>` - Look up Ethos profile
+
+**Reminder Commands:**
 - `/start_reminders` - Enable daily reminders
 - `/stop_reminders` - Disable daily reminders
 - `/set_reminder_time <time>` - Set custom reminder time (UTC)
 - `/get_reminder_time` - Check current reminder settings
+
+**Task Refresh Notification Commands:**
+- `/enable_task_refresh` - Enable daily reset notifications at midnight UTC
+- `/disable_task_refresh` - Disable task refresh notifications
+- `/get_task_refresh` - Check your task refresh notification status
+
+## Notification Types
+
+**Daily Reminders:** Personalized notifications at your chosen UTC time to remind you to complete contributor tasks before the daily reset.
+
+**Task Refresh Notifications:** Notifications sent at exactly 00:00 UTC when new contributor tasks become available and daily streaks reset.
+
+Both notification types are independent - you can enable/disable them separately based on your preferences.
 
 ## Time Format Examples
 
@@ -96,6 +111,7 @@ This bot is designed for Deno Deploy and includes:
 - `/webhook` - Telegram webhook (POST)
 - `/health` - Health check (GET)
 - `/test-reminder?hour=X` - Test reminder functionality (GET)
+- `/test-task-refresh` - Test task refresh notification functionality (GET)
 - `/set-webhook` - Initial webhook setup (GET)
 
 ## Development Benefits
