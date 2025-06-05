@@ -4,6 +4,7 @@ import { sendRemindersForHour, TEST_REMINDER_MESSAGE, sendTaskRefreshNotificatio
 import { 
     getAllReminderUsers, 
     getUsersForReminderTime, 
+    getUserReminderTimes,
     getReminderTimeStats,
     getUsersForTaskRefreshNotifications 
 } from './database.ts';
@@ -182,4 +183,4 @@ Your contributor tasks are available again!
 console.log('✅ Ethos Profile Bot is ready for Deno Deploy!');
 
 // Export the handler for Deno Deploy
-export default { fetch: handler }; 
+export default { fetch: handler };

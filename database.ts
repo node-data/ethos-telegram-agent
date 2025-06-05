@@ -6,7 +6,7 @@ export interface UserReminderData {
     chatId: number;
     addedAt: string;
     active: boolean;
-    reminderTime: string;
+    reminderTimes: string[]; // Changed from reminderTime to support multiple reminders
     updatedAt?: string;
     taskRefreshNotifications?: boolean; // New field for task refresh notification preference
 }
@@ -17,17 +17,30 @@ export async function addUserToReminders(chatId: number, reminderTime?: string):
         // Get existing user data to preserve custom settings
         const existingData = await kv.get(["users", "reminders", chatId.toString()]);
         const existingUserData = existingData.value as UserReminderData | null;
-        const existingTime = existingUserData?.reminderTime || "22:00";
+        
+        // Handle migration from old single reminderTime to array
+        let existingTimes: string[] = [];
+        if (existingUserData) {
+            if (Array.isArray(existingUserData.reminderTimes)) {
+                existingTimes = existingUserData.reminderTimes;
+            } else if ((existingUserData as any).reminderTime) {
+                // Migrate old single reminderTime to array
+                existingTimes = [(existingUserData as any).reminderTime];
+            }
+        }
+        
+        // Default to 22:00 if no existing times
+        const defaultTimes = existingTimes.length > 0 ? existingTimes : ["22:00"];
         const existingTaskRefreshPref = existingUserData?.taskRefreshNotifications ?? true; // Default to enabled
         
         await kv.set(["users", "reminders", chatId.toString()], {
             chatId,
             addedAt: new Date().toISOString(),
             active: true,
-            reminderTime: reminderTime || existingTime, // Store as "HH:MM" in UTC
+            reminderTimes: reminderTime ? [reminderTime] : defaultTimes, // Store as array of "HH:MM" in UTC
             taskRefreshNotifications: existingTaskRefreshPref
         });
-        console.log(`Added user ${chatId} to reminder list with time ${reminderTime || existingTime} UTC, task refresh notifications: ${existingTaskRefreshPref}`);
+        console.log(`Added user ${chatId} to reminder list with times ${JSON.stringify(reminderTime ? [reminderTime] : defaultTimes)} UTC, task refresh notifications: ${existingTaskRefreshPref}`);
     } catch (error) {
         console.error('Error adding user to reminders:', error);
     }
@@ -46,10 +59,37 @@ export async function getUserReminderTime(chatId: number): Promise<string | null
     try {
         const result = await kv.get(["users", "reminders", chatId.toString()]);
         const userData = result.value as UserReminderData | null;
-        return userData?.reminderTime || null;
+        if (userData) {
+            // Handle migration from old single reminderTime
+            if (Array.isArray(userData.reminderTimes)) {
+                return userData.reminderTimes[0] || null; // Return first time for backward compatibility
+            } else if ((userData as any).reminderTime) {
+                return (userData as any).reminderTime;
+            }
+        }
+        return null;
     } catch (error) {
         console.error('Error getting user reminder time:', error);
         return null;
+    }
+}
+
+export async function getUserReminderTimes(chatId: number): Promise<string[]> {
+    try {
+        const result = await kv.get(["users", "reminders", chatId.toString()]);
+        const userData = result.value as UserReminderData | null;
+        if (userData) {
+            // Handle migration from old single reminderTime
+            if (Array.isArray(userData.reminderTimes)) {
+                return userData.reminderTimes;
+            } else if ((userData as any).reminderTime) {
+                return [(userData as any).reminderTime];
+            }
+        }
+        return [];
+    } catch (error) {
+        console.error('Error getting user reminder times:', error);
+        return [];
     }
 }
 
@@ -60,7 +100,7 @@ export async function setUserReminderTime(chatId: number, reminderTime: string):
         if (existingUserData) {
             await kv.set(["users", "reminders", chatId.toString()], {
                 ...existingUserData,
-                reminderTime: reminderTime,
+                reminderTimes: [reminderTime], // Replace all times with single time for backward compatibility
                 updatedAt: new Date().toISOString()
             });
             console.log(`Updated reminder time for user ${chatId} to ${reminderTime} UTC`);
@@ -70,6 +110,107 @@ export async function setUserReminderTime(chatId: number, reminderTime: string):
         }
     } catch (error) {
         console.error('Error setting user reminder time:', error);
+        throw error;
+    }
+}
+
+export async function addUserReminderTime(chatId: number, reminderTime: string): Promise<{ success: boolean; message: string }> {
+    try {
+        const existingData = await kv.get(["users", "reminders", chatId.toString()]);
+        const existingUserData = existingData.value as UserReminderData | null;
+        
+        let currentTimes: string[] = [];
+        if (existingUserData) {
+            // Handle migration from old single reminderTime
+            if (Array.isArray(existingUserData.reminderTimes)) {
+                currentTimes = existingUserData.reminderTimes;
+            } else if ((existingUserData as any).reminderTime) {
+                currentTimes = [(existingUserData as any).reminderTime];
+            }
+        }
+        
+        // Check if time already exists
+        if (currentTimes.includes(reminderTime)) {
+            return { success: false, message: "You already have a reminder set for this time." };
+        }
+        
+        // Check limit of 3 reminders
+        if (currentTimes.length >= 3) {
+            return { success: false, message: "You can only have up to 3 reminder times. Remove one first with /remove_reminder_time." };
+        }
+        
+        const newTimes = [...currentTimes, reminderTime].sort(); // Keep times sorted
+        
+        if (existingUserData) {
+            await kv.set(["users", "reminders", chatId.toString()], {
+                ...existingUserData,
+                reminderTimes: newTimes,
+                active: true, // Ensure user is active when adding reminder
+                updatedAt: new Date().toISOString()
+            });
+        } else {
+            // Create new user
+            await kv.set(["users", "reminders", chatId.toString()], {
+                chatId,
+                addedAt: new Date().toISOString(),
+                active: true,
+                reminderTimes: newTimes,
+                taskRefreshNotifications: true
+            });
+        }
+        
+        console.log(`Added reminder time ${reminderTime} for user ${chatId}. Total times: ${JSON.stringify(newTimes)}`);
+        return { success: true, message: `Added reminder for ${reminderTime} UTC.` };
+    } catch (error) {
+        console.error('Error adding user reminder time:', error);
+        throw error;
+    }
+}
+
+export async function removeUserReminderTime(chatId: number, reminderTime: string): Promise<{ success: boolean; message: string }> {
+    try {
+        const existingData = await kv.get(["users", "reminders", chatId.toString()]);
+        const existingUserData = existingData.value as UserReminderData | null;
+        
+        if (!existingUserData) {
+            return { success: false, message: "You don't have any reminders set." };
+        }
+        
+        let currentTimes: string[] = [];
+        // Handle migration from old single reminderTime
+        if (Array.isArray(existingUserData.reminderTimes)) {
+            currentTimes = existingUserData.reminderTimes;
+        } else if ((existingUserData as any).reminderTime) {
+            currentTimes = [(existingUserData as any).reminderTime];
+        }
+        
+        if (!currentTimes.includes(reminderTime)) {
+            return { success: false, message: "You don't have a reminder set for this time." };
+        }
+        
+        const newTimes = currentTimes.filter(time => time !== reminderTime);
+        
+        if (newTimes.length === 0) {
+            // If no more reminder times, deactivate user but keep record
+            await kv.set(["users", "reminders", chatId.toString()], {
+                ...existingUserData,
+                reminderTimes: [],
+                active: false,
+                updatedAt: new Date().toISOString()
+            });
+            console.log(`Removed last reminder time for user ${chatId}. User deactivated.`);
+            return { success: true, message: "Removed reminder. You now have no active reminders." };
+        } else {
+            await kv.set(["users", "reminders", chatId.toString()], {
+                ...existingUserData,
+                reminderTimes: newTimes,
+                updatedAt: new Date().toISOString()
+            });
+            console.log(`Removed reminder time ${reminderTime} for user ${chatId}. Remaining times: ${JSON.stringify(newTimes)}`);
+            return { success: true, message: `Removed reminder for ${reminderTime} UTC.` };
+        }
+    } catch (error) {
+        console.error('Error removing user reminder time:', error);
         throw error;
     }
 }
@@ -101,10 +242,23 @@ export async function getUsersForReminderTime(currentHour: number): Promise<numb
         for await (const entry of iter) {
             const userData = entry.value as UserReminderData | null;
             
-            if (userData?.active && userData.reminderTime) {
-                const [hour] = userData.reminderTime.split(':').map(Number);
-                if (hour === currentHour) {
-                    users.push(userData.chatId);
+            if (userData?.active) {
+                let timesToCheck: string[] = [];
+                
+                // Handle migration from old single reminderTime
+                if (Array.isArray(userData.reminderTimes)) {
+                    timesToCheck = userData.reminderTimes;
+                } else if ((userData as any).reminderTime) {
+                    timesToCheck = [(userData as any).reminderTime];
+                }
+                
+                // Check if any of the user's reminder times match the current hour
+                for (const timeStr of timesToCheck) {
+                    const [hour] = timeStr.split(':').map(Number);
+                    if (hour === currentHour) {
+                        users.push(userData.chatId);
+                        break; // Don't add user multiple times even if they have multiple reminders at same hour
+                    }
                 }
             }
         }
@@ -123,8 +277,19 @@ export async function getReminderTimeStats(): Promise<{ [key: string]: number }>
         
         for await (const entry of iter) {
             const userData = entry.value as UserReminderData | null;
-            if (userData?.active && userData.reminderTime) {
-                timeStats[userData.reminderTime] = (timeStats[userData.reminderTime] || 0) + 1;
+            if (userData?.active) {
+                let timesToCount: string[] = [];
+                
+                // Handle migration from old single reminderTime
+                if (Array.isArray(userData.reminderTimes)) {
+                    timesToCount = userData.reminderTimes;
+                } else if ((userData as any).reminderTime) {
+                    timesToCount = [(userData as any).reminderTime];
+                }
+                
+                for (const time of timesToCount) {
+                    timeStats[time] = (timeStats[time] || 0) + 1;
+                }
             }
         }
         
@@ -175,7 +340,7 @@ export async function setUserTaskRefreshNotifications(chatId: number, enabled: b
                 chatId,
                 addedAt: new Date().toISOString(),
                 active: true,
-                reminderTime: "22:00", // Default reminder time
+                reminderTimes: ["22:00"], // Default reminder time
                 taskRefreshNotifications: enabled
             });
             console.log(`Created new user ${chatId} with task refresh notifications set to ${enabled}`);

@@ -1,5 +1,5 @@
 import { sendMessage, sendChatAction, sendPhoto } from './telegram.ts';
-import { addUserToReminders, removeUserFromReminders, getUserReminderTime, setUserReminderTime, setUserTaskRefreshNotifications, getUserTaskRefreshNotifications } from './database.ts';
+import { addUserToReminders, removeUserFromReminders, getUserReminderTime, getUserReminderTimes, setUserReminderTime, addUserReminderTime, removeUserReminderTime, setUserTaskRefreshNotifications, getUserTaskRefreshNotifications } from './database.ts';
 import { parseReminderTime, formatTimeForDisplay } from './utils.ts';
 import { 
     formatUserkey, 
@@ -38,6 +38,8 @@ You can also just send me a Twitter profile URL and I'll automatically look it u
 
 <b>Daily task reminders:</b> You've been automatically signed up for daily contributor task reminders 2 hours before reset[10:00 PM UTC]. Use /set_reminder_time to change your preferred UTC time, or /disable_task_reminders if you don't want these.
 
+<b>Multiple reminders:</b> You can set up to 3 reminder times per day! Use /add_reminder_time to add more reminders and /list_reminder_times to see all your times.
+
 <b>Task refresh notifications:</b> You'll also receive daily reset notifications at midnight UTC. Use /disable_task_refresh to turn these off if you prefer.
         `;
         await sendMessage(chatId, welcomeMessage, 'HTML', messageId);
@@ -58,6 +60,9 @@ You can also just send me a Twitter profile URL and I'll automatically look it u
 /disable_task_reminders - Disable daily contributor task reminders
 /set_reminder_time &lt;time&gt; - Set your preferred reminder time (UTC)
 /get_reminder_time - Check your current reminder time
+/list_reminder_times - Show all your reminder times
+/add_reminder_time &lt;time&gt; - Add another reminder time (max 3)
+/remove_reminder_time &lt;time&gt; - Remove a specific reminder time
 
 <b>Task Refresh Notification Commands:</b>
 /enable_task_refresh - Enable daily reset notifications at midnight UTC
@@ -66,7 +71,8 @@ You can also just send me a Twitter profile URL and I'll automatically look it u
 
 <b>Time Examples (UTC):</b>
 • <code>/set_reminder_time 6pm</code> - 6:00 PM UTC
-• <code>/set_reminder_time 18:00</code> - 6:00 PM UTC
+• <code>/add_reminder_time 18:00</code> - 6:00 PM UTC
+• <code>/remove_reminder_time 9am</code> - 9:00 AM UTC
 
 <b>Profile Examples:</b>
 • <code>/profile ethos_network</code> - Look up Twitter handle
@@ -79,9 +85,10 @@ You can also just send me a Twitter profile URL and I'll automatically look it u
 • To do this in groups I need admin access but you can turn off the permissions.
 
 <b>Daily Notifications:</b>
-• <b>Reminders:</b> Get reminded at your chosen UTC time to complete contributor tasks
+• <b>Reminders:</b> Get reminded at your chosen UTC time(s) to complete contributor tasks
 • <b>Task Refresh Notifications:</b> Get notified when tasks reset at midnight UTC
 • Both help you maintain your Ethos Network streak
+• You can set up to 3 reminder times per day
 • All times are in UTC timezone
 
 The bot will fetch profile data from the Ethos Network including reviews, vouches, and slashes.
@@ -165,6 +172,8 @@ You can re-enable them anytime by using /enable_task_reminders.
 You will receive daily contributor task reminders at <b>${displayTime}</b>.
 
 Use /set_reminder_time to change your time or /disable_task_reminders to disable them completely.
+
+<i>💡 Tip: Use /list_reminder_times to see all your reminders or /add_reminder_time to add more (up to 3 total).</i>
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         } else {
@@ -174,6 +183,41 @@ Use /set_reminder_time to change your time or /disable_task_reminders to disable
 You don't currently have daily reminders enabled.
 
 Use /enable_task_reminders to enable reminders or use /set_reminder_time to set a custom time in UTC.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /list_reminder_times command
+    if (text === '/list_reminder_times') {
+        const reminderTimes = await getUserReminderTimes(chatId);
+        
+        if (reminderTimes.length === 0) {
+            const confirmMessage = `
+🔕 <b>No Reminders Set</b>
+
+You don't currently have any reminder times configured.
+
+Use /add_reminder_time or /set_reminder_time to add reminders.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        } else {
+            const timesList = reminderTimes
+                .map(time => `• <b>${formatTimeForDisplay(time)}</b>`)
+                .join('\n');
+            
+            const confirmMessage = `
+<b>Your Reminder Times (${reminderTimes.length}/3)</b>
+
+${timesList}
+
+You will receive daily contributor task reminders at these times.
+
+<b>Commands:</b>
+• /add_reminder_time &lt;time&gt; - Add another reminder (max 3)
+• /remove_reminder_time &lt;time&gt; - Remove a specific time
+• /disable_task_reminders - Disable all reminders
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         }
@@ -194,6 +238,8 @@ Examples:
 • <code>/set_reminder_time 18:00</code> - 6:00 PM UTC
 
 All times are in UTC timezone.
+
+<i>💡 Tip: This will replace all your current reminders with this single time. Use /add_reminder_time to add additional reminders.</i>
             `.trim(), 'HTML', messageId);
             return;
         }
@@ -223,11 +269,132 @@ All times are in UTC timezone.
 <b>UTC Time:</b> ${displayTime}
 
 You will receive reminders at <b>${displayTime}</b> every day to help maintain your streak.
+
+<i>💡 Tip: Use /add_reminder_time to add up to 2 more reminder times, or /list_reminder_times to see all your reminders.</i>
             `.trim();
             await sendMessage(chatId, confirmMessage, 'HTML', messageId);
         } catch (error) {
             console.error('Error setting reminder time:', error);
             await sendMessage(chatId, '❌ Error setting reminder time. Please try again.', 'HTML', messageId);
+        }
+        return;
+    }
+
+    // Handle /add_reminder_time command
+    const addTimeMatch = text.match(/^\/add_reminder_time (.+)/);
+    if (addTimeMatch) {
+        const timeInput = addTimeMatch[1].trim();
+        
+        if (!timeInput) {
+            await sendMessage(chatId, `
+❌ <b>Please specify a time</b>
+
+Examples:
+• <code>/add_reminder_time 6pm</code> - 6:00 PM UTC
+• <code>/add_reminder_time 18:00</code> - 6:00 PM UTC
+
+All times are in UTC timezone.
+You can have up to 3 reminder times total.
+            `.trim(), 'HTML', messageId);
+            return;
+        }
+        
+        const parsedTime = parseReminderTime(timeInput);
+        
+        if (!parsedTime) {
+            await sendMessage(chatId, `
+❌ <b>Invalid time format</b>
+
+Please use one of these formats:
+• <b>12-hour:</b> 6pm, 9:30am, 11:45pm
+• <b>24-hour:</b> 18:00, 09:30, 23:45
+
+All times are in UTC timezone.
+            `.trim(), 'HTML', messageId);
+            return;
+        }
+        
+        try {
+            const result = await addUserReminderTime(chatId, parsedTime);
+            
+            if (result.success) {
+                const displayTime = formatTimeForDisplay(parsedTime);
+                const currentTimes = await getUserReminderTimes(chatId);
+                
+                const confirmMessage = `
+✅ <b>Reminder Added!</b>
+
+<b>New Time:</b> ${displayTime}
+<b>Total Reminders:</b> ${currentTimes.length}/3
+
+Use /list_reminder_times to see all your reminders.
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            } else {
+                await sendMessage(chatId, `❌ <b>Could not add reminder</b>\n\n${result.message}`, 'HTML', messageId);
+            }
+        } catch (error) {
+            console.error('Error adding reminder time:', error);
+            await sendMessage(chatId, '❌ Error adding reminder time. Please try again.', 'HTML', messageId);
+        }
+        return;
+    }
+
+    // Handle /remove_reminder_time command
+    const removeTimeMatch = text.match(/^\/remove_reminder_time (.+)/);
+    if (removeTimeMatch) {
+        const timeInput = removeTimeMatch[1].trim();
+        
+        if (!timeInput) {
+            await sendMessage(chatId, `
+❌ <b>Please specify a time</b>
+
+Examples:
+• <code>/remove_reminder_time 6pm</code> - 6:00 PM UTC
+• <code>/remove_reminder_time 18:00</code> - 6:00 PM UTC
+
+Use /list_reminder_times to see your current reminders.
+            `.trim(), 'HTML', messageId);
+            return;
+        }
+        
+        const parsedTime = parseReminderTime(timeInput);
+        
+        if (!parsedTime) {
+            await sendMessage(chatId, `
+❌ <b>Invalid time format</b>
+
+Please use one of these formats:
+• <b>12-hour:</b> 6pm, 9:30am, 11:45pm
+• <b>24-hour:</b> 18:00, 09:30, 23:45
+
+Use /list_reminder_times to see your current reminders.
+            `.trim(), 'HTML', messageId);
+            return;
+        }
+        
+        try {
+            const result = await removeUserReminderTime(chatId, parsedTime);
+            
+            if (result.success) {
+                const displayTime = formatTimeForDisplay(parsedTime);
+                const currentTimes = await getUserReminderTimes(chatId);
+                
+                const confirmMessage = `
+✅ <b>Reminder Removed!</b>
+
+<b>Removed Time:</b> ${displayTime}
+<b>Remaining Reminders:</b> ${currentTimes.length}/3
+
+${currentTimes.length > 0 ? 'Use /list_reminder_times to see your remaining reminders.' : 'You now have no active reminders. Use /add_reminder_time to add new ones.'}
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            } else {
+                await sendMessage(chatId, `❌ <b>Could not remove reminder</b>\n\n${result.message}`, 'HTML', messageId);
+            }
+        } catch (error) {
+            console.error('Error removing reminder time:', error);
+            await sendMessage(chatId, '❌ Error removing reminder time. Please try again.', 'HTML', messageId);
         }
         return;
     }

@@ -9,7 +9,7 @@ Don't forget to complete your contributor tasks today to maintain your streak!
 
 ⏰ <b>Time remaining:</b> Until midnight UTC (00:00)
 
-<i>Use /disable_task_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
+<i>Use /disable_task_reminders to disable, /list_reminder_times to see all your reminders, or /add_reminder_time to add more (max 3 total).</i>
 `.trim();
 
 // Task refresh notification message content

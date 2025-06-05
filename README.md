@@ -70,8 +70,11 @@ The codebase is organized into focused modules for better maintainability:
 **Reminder Commands:**
 - `/enable_task_reminders` - Enable daily reminders
 - `/disable_task_reminders` - Disable daily reminders
-- `/set_reminder_time <time>` - Set custom reminder time (UTC)
+- `/set_reminder_time <time>` - Set custom reminder time (UTC) - replaces all existing
 - `/get_reminder_time` - Check current reminder settings
+- `/list_reminder_times` - Show all your reminder times
+- `/add_reminder_time <time>` - Add another reminder time (max 3 total)
+- `/remove_reminder_time <time>` - Remove a specific reminder time
 
 **Task Refresh Notification Commands:**
 - `/enable_task_refresh` - Enable daily reset notifications at midnight UTC
@@ -84,11 +87,29 @@ The codebase is organized into focused modules for better maintainability:
 
 ## Notification Types
 
-**Daily Reminders:** Personalized notifications at your chosen UTC time to remind you to complete contributor tasks before the daily reset.
+**Daily Reminders:** Personalized notifications at your chosen UTC time(s) to remind you to complete contributor tasks before the daily reset. You can set up to 3 different reminder times per day.
 
 **Task Refresh Notifications:** Notifications sent at exactly 00:00 UTC when new contributor tasks become available and daily streaks reset.
 
 Both notification types are independent - you can enable/disable them separately based on your preferences.
+
+## Multiple Reminders
+
+The bot now supports multiple reminder times per user:
+- Set up to **3 reminder times** per day
+- Use `/add_reminder_time` to add additional reminders
+- Use `/remove_reminder_time` to remove specific times
+- Use `/list_reminder_times` to see all your configured times
+- Perfect for users who want multiple nudges throughout the day
+
+**Example workflow:**
+```
+/add_reminder_time 9am     # Morning reminder
+/add_reminder_time 6pm     # Evening reminder  
+/add_reminder_time 11pm    # Last chance reminder
+/list_reminder_times       # See: 09:00, 18:00, 23:00
+/remove_reminder_time 9am  # Remove morning reminder
+```
 
 ## Time Format Examples
 
