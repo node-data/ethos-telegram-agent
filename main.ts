@@ -1,4 +1,4 @@
-import { TELEGRAM_API } from './config.ts';
+import { TELEGRAM_API, ETHOS_API_BASE } from './config.ts';
 import { handleUpdate } from './handlers.ts';
 import { sendRemindersForHour, TEST_REMINDER_MESSAGE, sendTaskRefreshNotifications } from './reminders.ts';
 import { 
@@ -169,6 +169,7 @@ Your contributor tasks are available again!
                 chatId: testChatId,
                 hasUserkey: false,
                 userkey: null as string | null,
+                profileId: null as number | null,
                 taskStatus: null as any,
                 action: '',
                 message: '',
@@ -182,6 +183,19 @@ Your contributor tasks are available again!
                 result.userkey = userkey;
                 
                 if (userkey) {
+                    // First get the profileId for debugging
+                    try {
+                        const profileResponse = await fetch(`${ETHOS_API_BASE}/api/v1/users/${userkey}/stats`);
+                        if (profileResponse.ok) {
+                            const profileData = await profileResponse.json();
+                            if (profileData.ok && profileData.data.profileId) {
+                                result.profileId = profileData.data.profileId;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error fetching profileId for debugging:', error);
+                    }
+                    
                     // Check if user has already completed their daily tasks
                     const contributionStatus = await checkDailyContributionStatus(userkey);
                     result.taskStatus = contributionStatus;

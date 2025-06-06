@@ -14,10 +14,40 @@ export function formatUserkey(input: string): string {
     return `service:x.com:username:${cleanInput}`;
 }
 
+// Helper function to get profileId from userkey
+async function getProfileId(userkey: string): Promise<number | null> {
+    try {
+        const response = await fetch(`${ETHOS_API_BASE}/api/v1/users/${userkey}/stats`);
+        
+        if (!response.ok) {
+            return null;
+        }
+        
+        const data = await response.json();
+        
+        if (!data.ok || !data.data.profileId) {
+            return null;
+        }
+        
+        return data.data.profileId;
+    } catch (error) {
+        console.error('Error fetching profileId:', error);
+        return null;
+    }
+}
+
 // Helper function to check if user has completed daily contributor tasks
 export async function checkDailyContributionStatus(userkey: string): Promise<{ canGenerate: boolean; error?: string } | null> {
     try {
-        const response = await fetch(`${ETHOS_API_BASE}/api/v1/contributions/${userkey}/stats`);
+        // First get the profileId from the userkey
+        const profileId = await getProfileId(userkey);
+        
+        if (!profileId) {
+            return { canGenerate: true, error: 'Could not find profileId for user' };
+        }
+        
+        // Now use the profileId to check contributions
+        const response = await fetch(`${ETHOS_API_BASE}/api/v1/contributions/profileId:${profileId}/stats`);
         
         if (!response.ok) {
             return { canGenerate: true, error: `HTTP error! status: ${response.status}` };
