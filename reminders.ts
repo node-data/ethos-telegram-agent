@@ -65,6 +65,27 @@ export async function sendRemindersForHour(currentHour: number): Promise<{ succe
                     if (contributionStatus && !contributionStatus.canGenerate) {
                         // User has already completed their daily tasks, skip reminder
                         console.log(`Skipping reminder for user ${chatId} - daily tasks already completed`);
+                        
+                        // TODO: REMOVE THIS TEST MESSAGE AFTER TESTING
+                        // Temporary test message to verify smart reminder logic is working
+                        const testMessage = `
+🧪 <b>TEST: Smart Reminder Skipped!</b>
+
+You would have received a daily task reminder right now, but our smart system detected that you've already completed your contributor tasks today! 
+
+✅ <b>Tasks completed</b> - No reminder needed
+🧠 <b>Smart reminders working correctly</b>
+
+<i>This is a temporary test message that will be removed after testing.</i>
+                        `.trim();
+                        
+                        try {
+                            await sendMessage(chatId, testMessage, 'HTML', undefined, ETHOS_KEYBOARD);
+                            console.log(`Sent test message to user ${chatId} - reminder skipped due to completed tasks`);
+                        } catch (error) {
+                            console.error(`Failed to send test message to user ${chatId}:`, error);
+                        }
+                        
                         skippedCount++;
                         continue;
                     }
