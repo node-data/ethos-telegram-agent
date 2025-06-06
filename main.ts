@@ -6,9 +6,11 @@ import {
     getUsersForReminderTime, 
     getUserReminderTimes,
     getReminderTimeStats,
-    getUsersForTaskRefreshNotifications 
+    getUsersForTaskRefreshNotifications,
+    getUserUserkey
 } from './database.ts';
 import { sendMessage } from './telegram.ts';
+import { checkDailyContributionStatus } from './ethos.ts';
 
 console.log('🤖 Telegram bot is starting on Deno Deploy...');
 
@@ -123,6 +125,133 @@ Your contributor tasks are available again!
             });
         } catch (error) {
             console.error('Test task refresh notification error:', error);
+            return new Response(JSON.stringify({ 
+                success: false, 
+                error: error instanceof Error ? error.message : 'Unknown error' 
+            }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+    }
+    
+    // Personal test reminder endpoint (for testing with specific user)
+    if (url.pathname === '/test-reminder-user' && request.method === 'GET') {
+        try {
+            const chatIdParam = url.searchParams.get('chatId');
+            if (!chatIdParam) {
+                return new Response(JSON.stringify({ 
+                    success: false, 
+                    error: 'Missing chatId parameter. Use: /test-reminder-user?chatId=YOUR_CHAT_ID' 
+                }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const testChatId = parseInt(chatIdParam);
+            if (isNaN(testChatId)) {
+                return new Response(JSON.stringify({ 
+                    success: false, 
+                    error: 'Invalid chatId. Must be a number.' 
+                }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // Use imported functions
+            
+            // Test the smart reminder logic for this specific user
+            console.log(`Testing smart reminder logic for user ${testChatId}`);
+            
+            let result = {
+                chatId: testChatId,
+                hasUserkey: false,
+                userkey: null as string | null,
+                taskStatus: null as any,
+                action: '',
+                message: '',
+                success: false
+            };
+            
+            try {
+                // Check if user has a userkey stored
+                const userkey = await getUserUserkey(testChatId);
+                result.hasUserkey = !!userkey;
+                result.userkey = userkey;
+                
+                if (userkey) {
+                    // Check if user has already completed their daily tasks
+                    const contributionStatus = await checkDailyContributionStatus(userkey);
+                    result.taskStatus = contributionStatus;
+                    
+                    if (contributionStatus && !contributionStatus.canGenerate) {
+                        // User has already completed their daily tasks - send test skip message
+                        result.action = 'skipped';
+                        const testMessage = `
+🧪 <b>TEST: Smart Reminder Skipped!</b>
+
+You would have received a daily task reminder right now, but our smart system detected that you've already completed your contributor tasks today! 
+
+✅ <b>Tasks completed</b> - No reminder needed
+🧠 <b>Smart reminders working correctly</b>
+
+<i>This is a temporary test message that will be removed after testing.</i>
+                        `.trim();
+                        
+                        await sendMessage(testChatId, testMessage, 'HTML');
+                        result.message = 'Test skip message sent - tasks already completed';
+                        result.success = true;
+                    } else {
+                        // User hasn't completed tasks - send normal reminder
+                        result.action = 'reminder_sent';
+                        const testReminderMessage = `
+🔔 <b>TEST: Daily Reminder - Keep Your Streak Alive!</b>
+
+This is a test of the smart reminder system. You would normally receive this reminder because you haven't completed your contributor tasks yet today.
+
+Don't forget to complete your contributor tasks today to maintain your streak!
+
+<i>This was a test message. Your smart reminders are working correctly!</i>
+                        `.trim();
+                        
+                        await sendMessage(testChatId, testReminderMessage, 'HTML');
+                        result.message = 'Test reminder sent - tasks not completed yet';
+                        result.success = true;
+                    }
+                } else {
+                    // No userkey stored - would send regular reminder
+                    result.action = 'no_userkey';
+                    const testMessage = `
+🔔 <b>TEST: Regular Reminder (No Smart Features)</b>
+
+You don't have a userkey set, so you would receive all scheduled reminders regardless of task completion.
+
+Use /set_userkey &lt;handle_or_address&gt; to enable smart reminders that only send when you haven't completed your daily tasks.
+
+<i>This was a test message.</i>
+                    `.trim();
+                    
+                    await sendMessage(testChatId, testMessage, 'HTML');
+                    result.message = 'Test reminder sent - no userkey configured';
+                    result.success = true;
+                }
+            } catch (messageError) {
+                result.success = false;
+                result.message = `Failed to send test message: ${messageError}`;
+            }
+            
+            return new Response(JSON.stringify({
+                success: true,
+                testType: 'personal',
+                result: result
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+        } catch (error) {
+            console.error('Personal test reminder error:', error);
             return new Response(JSON.stringify({ 
                 success: false, 
                 error: error instanceof Error ? error.message : 'Unknown error' 
