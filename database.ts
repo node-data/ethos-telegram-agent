@@ -41,13 +41,17 @@ export async function addUserToReminders(
     const defaultTimes = existingTimes.length > 0 ? existingTimes : ["22:00"];
     const existingTaskRefreshPref =
       existingUserData?.taskRefreshNotifications ?? true; // Default to enabled
+    const existingUserkey = existingUserData?.userkey; // Preserve existing userkey
+    const existingAddedAt = existingUserData?.addedAt || new Date().toISOString(); // Preserve original addedAt
 
     await kv.set(["users", "reminders", chatId.toString()], {
       chatId,
-      addedAt: new Date().toISOString(),
+      addedAt: existingAddedAt, // Don't overwrite the original addedAt timestamp
       active: true,
       reminderTimes: reminderTime ? [reminderTime] : defaultTimes, // Store as array of "HH:MM" in UTC
       taskRefreshNotifications: existingTaskRefreshPref,
+      ...(existingUserkey && { userkey: existingUserkey }), // Preserve userkey if it exists
+      updatedAt: new Date().toISOString(), // Track when this update happened
     });
     console.log(
       `Added user ${chatId} to reminder list with times ${
