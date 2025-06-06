@@ -14,6 +14,30 @@ export function formatUserkey(input: string): string {
     return `service:x.com:username:${cleanInput}`;
 }
 
+// Helper function to check if user has completed daily contributor tasks
+export async function checkDailyContributionStatus(userkey: string): Promise<{ canGenerate: boolean; error?: string } | null> {
+    try {
+        const response = await fetch(`${ETHOS_API_BASE}/api/v1/contributions/${userkey}/stats`);
+        
+        if (!response.ok) {
+            return { canGenerate: true, error: `HTTP error! status: ${response.status}` };
+        }
+        
+        const data = await response.json();
+        
+        if (!data.ok) {
+            return { canGenerate: true, error: 'API returned error' };
+        }
+        
+        // If canGenerateDailyContributions is false, they've already completed their tasks
+        return { canGenerate: data.data.canGenerateDailyContributions };
+    } catch (error) {
+        console.error('Error checking daily contribution status:', error);
+        // Return true (can generate) if there's an error, so we don't skip reminders due to API issues
+        return { canGenerate: true, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+}
+
 // Helper function to search for user and get name using Search API
 export async function fetchUserDisplayName(input: string): Promise<string | null> {
     try {

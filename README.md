@@ -93,6 +93,23 @@ The codebase is organized into focused modules for better maintainability:
 
 Both notification types are independent - you can enable/disable them separately based on your preferences.
 
+## Smart Reminders
+
+The bot can intelligently check if you've completed your daily contributor tasks before sending reminders:
+
+**How it works:**
+- Set your userkey with `/set_userkey <twitter_handle_or_address>`
+- The bot uses the Ethos API to check if you've completed your daily tasks
+- If `canGenerateDailyContributions` is `false`, reminders are skipped
+- If you haven't completed tasks or there's an API error, reminders are sent normally
+
+**Benefits:**
+- Reduces notification spam when you've already completed your tasks
+- Helps maintain engagement without being annoying
+- Automatically adapts to your contribution patterns
+
+**Privacy:** Your userkey is stored locally in the bot's database and only used to check task completion status via the public Ethos API.
+
 ## Multiple Reminders
 
 The bot now supports multiple reminder times per user:

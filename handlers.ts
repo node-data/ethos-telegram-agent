@@ -1,5 +1,5 @@
 import { sendMessage, sendChatAction, sendPhoto } from './telegram.ts';
-import { addUserToReminders, removeUserFromReminders, getUserReminderTime, getUserReminderTimes, setUserReminderTime, addUserReminderTime, removeUserReminderTime, setUserTaskRefreshNotifications, getUserTaskRefreshNotifications } from './database.ts';
+import { addUserToReminders, removeUserFromReminders, getUserReminderTime, getUserReminderTimes, setUserReminderTime, addUserReminderTime, removeUserReminderTime, setUserTaskRefreshNotifications, getUserTaskRefreshNotifications, setUserUserkey, getUserUserkey } from './database.ts';
 import { parseReminderTime, formatTimeForDisplay } from './utils.ts';
 import { 
     formatUserkey, 
@@ -69,6 +69,11 @@ You can also just send me a Twitter profile URL and I'll automatically look it u
 /disable_task_refresh - Disable task refresh notifications
 /get_task_refresh - Check your task refresh notification status
 
+<b>Smart Reminder Commands:</b>
+/set_userkey &lt;handle_or_address&gt; - Set your Ethos userkey for smart reminders
+/get_userkey - Check your stored userkey
+/clear_userkey - Remove stored userkey (get all reminders)
+
 <b>Time Examples (UTC):</b>
 • <code>/set_reminder_time 6pm</code> - 6:00 PM UTC
 • <code>/add_reminder_time 18:00</code> - 6:00 PM UTC
@@ -87,6 +92,7 @@ You can also just send me a Twitter profile URL and I'll automatically look it u
 <b>Daily Notifications:</b>
 • <b>Reminders:</b> Get reminded at your chosen UTC time(s) to complete contributor tasks
 • <b>Task Refresh Notifications:</b> Get notified when tasks reset at midnight UTC
+• <b>Smart Reminders:</b> Set your userkey to only get reminders if you haven't completed tasks yet
 • Both help you maintain your Ethos Network streak
 • You can set up to 3 reminder times per day
 • All times are in UTC timezone
@@ -478,6 +484,109 @@ Use /enable_task_refresh to turn these on.
         } catch (error) {
             console.error('Error getting task refresh notifications status:', error);
             await sendMessage(chatId, '❌ Error checking task refresh notification status. Please try again.', 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /set_userkey command
+    const setUserkeyMatch = text.match(/^\/set_userkey (.+)/);
+    if (setUserkeyMatch) {
+        const input = setUserkeyMatch[1].trim();
+        
+        if (!input) {
+            await sendMessage(chatId, '❌ Please provide a Twitter handle or EVM address.\n\nExample: <code>/set_userkey ethos_network</code>', 'HTML', messageId);
+            return;
+        }
+        
+        try {
+            // Format the userkey
+            const userkey = formatUserkey(input);
+            console.log(`Setting userkey for user ${chatId}: ${userkey}`);
+            
+            // Store the userkey for this user
+            await setUserUserkey(chatId, userkey);
+            
+            const confirmMessage = `
+✅ <b>Smart Reminders Enabled!</b>
+
+Your userkey has been set successfully. You will now only receive reminders if you haven't completed your daily contributor tasks.
+
+<b>Userkey:</b> <code>${userkey}</code>
+
+If you complete your daily tasks, reminders will be automatically skipped for that day.
+
+Use /clear_userkey to remove this setting and get all reminders again.
+            `.trim();
+            await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+        } catch (error) {
+            console.error('Error setting userkey:', error);
+            await sendMessage(chatId, '❌ Error setting userkey. Please try again.', 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /get_userkey command
+    if (text === '/get_userkey') {
+        try {
+            const userkey = await getUserUserkey(chatId);
+            
+            if (userkey) {
+                const confirmMessage = `
+<b>Your Current Userkey</b>
+
+<b>Userkey:</b> <code>${userkey}</code>
+
+Smart reminders are <b>ENABLED</b> - you'll only get reminders if you haven't completed your daily contributor tasks.
+
+Use /clear_userkey to remove this setting and get all reminders again.
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            } else {
+                const confirmMessage = `
+❓ <b>No Userkey Set</b>
+
+You haven't set a userkey yet. You'll receive all scheduled reminders regardless of task completion.
+
+Use /set_userkey &lt;handle_or_address&gt; to enable smart reminders that only send when you haven't completed your daily tasks.
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            }
+        } catch (error) {
+            console.error('Error getting userkey:', error);
+            await sendMessage(chatId, '❌ Error checking userkey. Please try again.', 'HTML', messageId);
+        }
+        return;
+    }
+    
+    // Handle /clear_userkey command
+    if (text === '/clear_userkey') {
+        try {
+            const currentUserkey = await getUserUserkey(chatId);
+            
+            if (currentUserkey) {
+                await setUserUserkey(chatId, ''); // Set to empty string to clear
+                
+                const confirmMessage = `
+✅ <b>Userkey Cleared</b>
+
+Your userkey has been removed. You will now receive all scheduled reminders regardless of task completion status.
+
+Use /set_userkey &lt;handle_or_address&gt; anytime to re-enable smart reminders.
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            } else {
+                const confirmMessage = `
+❓ <b>No Userkey to Clear</b>
+
+You don't have a userkey set. You're already receiving all scheduled reminders.
+
+Use /set_userkey &lt;handle_or_address&gt; to enable smart reminders.
+                `.trim();
+                await sendMessage(chatId, confirmMessage, 'HTML', messageId);
+            }
+        } catch (error) {
+            console.error('Error clearing userkey:', error);
+            await sendMessage(chatId, '❌ Error clearing userkey. Please try again.', 'HTML', messageId);
         }
         return;
     }

@@ -1,5 +1,6 @@
-import { getUsersForReminderTime, removeUserFromReminders, getUsersForTaskRefreshNotifications } from './database.ts';
+import { getUsersForReminderTime, removeUserFromReminders, getUsersForTaskRefreshNotifications, getUserUserkey } from './database.ts';
 import { sendMessage } from './telegram.ts';
+import { checkDailyContributionStatus } from './ethos.ts';
 
 // Reminder message content
 const REMINDER_MESSAGE = `
@@ -34,7 +35,7 @@ const ETHOS_KEYBOARD = {
 };
 
 // Function to send reminders to users scheduled for a specific hour
-export async function sendRemindersForHour(currentHour: number): Promise<{ success: number; failed: number }> {
+export async function sendRemindersForHour(currentHour: number): Promise<{ success: number; failed: number; skipped: number }> {
     console.log(`🔔 Checking for reminders at hour ${currentHour} UTC...`);
     
     try {
@@ -42,17 +43,38 @@ export async function sendRemindersForHour(currentHour: number): Promise<{ succe
         
         if (users.length === 0) {
             console.log(`No users scheduled for reminders at ${currentHour}:00 UTC`);
-            return { success: 0, failed: 0 };
+            return { success: 0, failed: 0, skipped: 0 };
         }
         
-        console.log(`Sending reminders to ${users.length} users at ${currentHour}:00 UTC`);
+        console.log(`Checking ${users.length} users at ${currentHour}:00 UTC for task completion status...`);
         
         let successCount = 0;
         let failureCount = 0;
+        let skippedCount = 0;
         
-        // Send reminders to users scheduled for this hour (with rate limiting)
+        // Send reminders to users scheduled for this hour (with task completion checking)
         for (const chatId of users) {
             try {
+                // Check if user has a userkey stored
+                const userkey = await getUserUserkey(chatId);
+                
+                if (userkey) {
+                    // Check if user has already completed their daily tasks
+                    const contributionStatus = await checkDailyContributionStatus(userkey);
+                    
+                    if (contributionStatus && !contributionStatus.canGenerate) {
+                        // User has already completed their daily tasks, skip reminder
+                        console.log(`Skipping reminder for user ${chatId} - daily tasks already completed`);
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    if (contributionStatus?.error) {
+                        console.log(`Warning: Could not check task status for user ${chatId}: ${contributionStatus.error}. Sending reminder anyway.`);
+                    }
+                }
+                
+                // Send reminder (either no userkey stored, or user hasn't completed tasks, or API error)
                 await sendMessage(chatId, REMINDER_MESSAGE, 'HTML', undefined, ETHOS_KEYBOARD);
                 successCount++;
                 
@@ -71,11 +93,11 @@ export async function sendRemindersForHour(currentHour: number): Promise<{ succe
             }
         }
         
-        console.log(`✅ Reminder summary for ${currentHour}:00 UTC: ${successCount} sent, ${failureCount} failed`);
-        return { success: successCount, failed: failureCount };
+        console.log(`✅ Reminder summary for ${currentHour}:00 UTC: ${successCount} sent, ${failureCount} failed, ${skippedCount} skipped (tasks completed)`);
+        return { success: successCount, failed: failureCount, skipped: skippedCount };
     } catch (error) {
         console.error('Error in reminder sending:', error);
-        return { success: 0, failed: 0 };
+        return { success: 0, failed: 0, skipped: 0 };
     }
 }
 

@@ -9,6 +9,7 @@ export interface UserReminderData {
     reminderTimes: string[]; // Changed from reminderTime to support multiple reminders
     updatedAt?: string;
     taskRefreshNotifications?: boolean; // New field for task refresh notification preference
+    userkey?: string; // Optional field to store user's Ethos userkey for task checking
 }
 
 // User tracking functions
@@ -362,6 +363,51 @@ export async function getUserTaskRefreshNotifications(chatId: number): Promise<b
         return null; // User not found
     } catch (error) {
         console.error('Error getting user task refresh notifications:', error);
+        return null;
+    }
+}
+
+// New function to set user's userkey for task completion checking
+export async function setUserUserkey(chatId: number, userkey: string): Promise<void> {
+    try {
+        const existingData = await kv.get(["users", "reminders", chatId.toString()]);
+        const existingUserData = existingData.value as UserReminderData | null;
+        
+        if (existingUserData) {
+            await kv.set(["users", "reminders", chatId.toString()], {
+                ...existingUserData,
+                userkey: userkey,
+                updatedAt: new Date().toISOString()
+            });
+            console.log(`Updated userkey for user ${chatId}`);
+        } else {
+            // Create new user with userkey
+            await kv.set(["users", "reminders", chatId.toString()], {
+                chatId,
+                addedAt: new Date().toISOString(),
+                active: true,
+                reminderTimes: ["22:00"], // Default reminder time
+                taskRefreshNotifications: true,
+                userkey: userkey
+            });
+            console.log(`Created new user ${chatId} with userkey`);
+        }
+    } catch (error) {
+        console.error('Error setting user userkey:', error);
+        throw error;
+    }
+}
+
+// New function to get user's userkey
+export async function getUserUserkey(chatId: number): Promise<string | null> {
+    try {
+        const result = await kv.get(["users", "reminders", chatId.toString()]);
+        const userData = result.value as UserReminderData | null;
+        const userkey = userData?.userkey;
+        // Return null if userkey is empty string (cleared) or undefined
+        return (userkey && userkey.trim() !== '') ? userkey : null;
+    } catch (error) {
+        console.error('Error getting user userkey:', error);
         return null;
     }
 } 

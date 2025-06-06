@@ -44,23 +44,11 @@ async function handler(request: Request): Promise<Response> {
             const hourParam = url.searchParams.get('hour');
             const testHour = hourParam ? parseInt(hourParam) : new Date().getUTCHours();
             
+            // Use the actual reminder function for testing to include task completion checking
+            const reminderResult = await sendRemindersForHour(testHour);
+            
+            // Get users scheduled for this hour for additional info
             const usersForHour = await getUsersForReminderTime(testHour);
-            
-            const reminderMessage = TEST_REMINDER_MESSAGE(testHour);
-            
-            let successCount = 0;
-            let failureCount = 0;
-            
-            // Send test reminders to users scheduled for this hour
-            for (const chatId of usersForHour) {
-                try {
-                    await sendMessage(chatId, reminderMessage, 'HTML');
-                    successCount++;
-                } catch (error) {
-                    console.error(`Failed to send test reminder to user ${chatId}:`, error);
-                    failureCount++;
-                }
-            }
             
             // Get statistics about all reminder times
             const timeStats = await getReminderTimeStats();
@@ -70,9 +58,10 @@ async function handler(request: Request): Promise<Response> {
                 testHour: testHour,
                 totalUsers: count,
                 usersForTestHour: usersForHour.length,
-                sent: successCount,
-                failed: failureCount,
-                message: `Test reminder sent to ${successCount}/${usersForHour.length} users scheduled for ${testHour}:00 UTC`,
+                sent: reminderResult.success,
+                failed: reminderResult.failed,
+                skipped: reminderResult.skipped,
+                message: `Test reminder sent to ${reminderResult.success}/${usersForHour.length} users scheduled for ${testHour}:00 UTC (${reminderResult.skipped} skipped - tasks completed)`,
                 reminderTimeDistribution: timeStats
             }), {
                 headers: { 'Content-Type': 'application/json' }
