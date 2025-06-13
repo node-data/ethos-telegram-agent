@@ -12,6 +12,13 @@ export interface UserReminderData {
   userkey?: string; // Optional field to store user's Ethos userkey for task checking
 }
 
+export interface NotificationRecord {
+  chatId: number;
+  type: 'reminder' | 'task_refresh';
+  sentAt: string;
+  messageHash: string; // Hash of the message content to detect duplicates
+}
+
 // User tracking functions
 export async function addUserToReminders(
   chatId: number,
@@ -529,5 +536,50 @@ export async function getUserUserkey(chatId: number): Promise<string | null> {
   } catch (error) {
     console.error("Error getting user userkey:", error);
     return null;
+  }
+}
+
+// Function to check if a notification was recently sent
+export async function wasNotificationRecentlySent(
+  chatId: number,
+  type: 'reminder' | 'task_refresh',
+  messageHash: string,
+  timeWindowMinutes: number = 60
+): Promise<boolean> {
+  try {
+    const key = ["notifications", chatId.toString(), type];
+    const result = await kv.get(key);
+    const record = result.value as NotificationRecord | null;
+
+    if (!record) return false;
+
+    const sentTime = new Date(record.sentAt);
+    const now = new Date();
+    const timeDiff = (now.getTime() - sentTime.getTime()) / (1000 * 60); // Convert to minutes
+
+    // Check if the notification was sent within the time window and has the same content
+    return timeDiff < timeWindowMinutes && record.messageHash === messageHash;
+  } catch (error) {
+    console.error("Error checking recent notification:", error);
+    return false; // If there's an error, allow the notification to be sent
+  }
+}
+
+// Function to record a sent notification
+export async function recordNotificationSent(
+  chatId: number,
+  type: 'reminder' | 'task_refresh',
+  messageHash: string
+): Promise<void> {
+  try {
+    const key = ["notifications", chatId.toString(), type];
+    await kv.set(key, {
+      chatId,
+      type,
+      sentAt: new Date().toISOString(),
+      messageHash
+    });
+  } catch (error) {
+    console.error("Error recording notification:", error);
   }
 }

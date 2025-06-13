@@ -3,6 +3,8 @@ import {
   getUsersForTaskRefreshNotifications,
   getUserUserkey,
   removeUserFromReminders,
+  wasNotificationRecentlySent,
+  recordNotificationSent
 } from "./database.ts";
 import { sendMessage } from "./telegram.ts";
 import { checkDailyContributionStatus } from "./ethos.ts";
@@ -38,6 +40,17 @@ const ETHOS_KEYBOARD = {
     },
   ]],
 };
+
+// Simple string hash function
+function createMessageHash(message: string): string {
+  let hash = 0;
+  for (let i = 0; i < message.length; i++) {
+    const char = message.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash.toString(16);
+}
 
 // Function to send reminders to users scheduled for a specific hour
 export async function sendRemindersForHour(
@@ -170,6 +183,7 @@ export async function sendTaskRefreshNotifications(): Promise<
 
   try {
     const users = await getUsersForTaskRefreshNotifications();
+    const messageHash = createMessageHash(TASK_REFRESH_NOTIFICATION);
 
     if (users.length === 0) {
       console.log("No users opted in for task refresh notifications");
@@ -186,6 +200,19 @@ export async function sendTaskRefreshNotifications(): Promise<
     // Send task refresh notifications to opted-in users only (with rate limiting)
     for (const chatId of users) {
       try {
+        // Check if we recently sent this notification
+        const wasRecentlySent = await wasNotificationRecentlySent(
+          chatId,
+          'task_refresh',
+          messageHash,
+          60 // 1 hour window
+        );
+
+        if (wasRecentlySent) {
+          console.log(`Skipping duplicate task refresh notification for user ${chatId}`);
+          continue;
+        }
+
         await sendMessage(
           chatId,
           TASK_REFRESH_NOTIFICATION,
@@ -193,6 +220,9 @@ export async function sendTaskRefreshNotifications(): Promise<
           undefined,
           ETHOS_KEYBOARD,
         );
+
+        // Record the sent notification
+        await recordNotificationSent(chatId, 'task_refresh', messageHash);
         successCount++;
 
         // Add small delay to avoid rate limiting
@@ -237,5 +267,5 @@ This is a test of the daily reminder system. Testing for hour ${testHour}:00 UTC
 
 Don't forget to complete your contributor tasks today to maintain your streak!
 
-<i>This was a test message. Use /disable_task_reminders to disable or /set_reminder_time [UTC time] without brackets to change your reminder time.</i>
+<i>This was a test message. Use /disable_task_reminders to disable or /set_reminder_time &lt;UTC time&gt; to change your reminder time.</i>
 `.trim();
