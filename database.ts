@@ -594,38 +594,31 @@ export async function setUserTestMessages(
   enabled: boolean,
 ): Promise<void> {
   try {
-    console.log(`Debug setUserTestMessages: chatId=${chatId}, enabled=${enabled}`);
     const existingData = await kv.get([
       "users",
       "reminders",
       chatId.toString(),
     ]);
     const existingUserData = existingData.value as UserReminderData | null;
-    console.log(`Debug setUserTestMessages: existingData=${JSON.stringify(existingUserData)}`);
-
     if (existingUserData) {
-      const updatedData = {
+      await kv.set(["users", "reminders", chatId.toString()], {
         ...existingUserData,
         receiveTestMessages: enabled,
         updatedAt: new Date().toISOString(),
-      };
-      console.log(`Debug setUserTestMessages: updatedData=${JSON.stringify(updatedData)}`);
-      await kv.set(["users", "reminders", chatId.toString()], updatedData);
+      });
       console.log(
         `Updated test messages for user ${chatId} to ${enabled}`,
       );
     } else {
       // User doesn't exist, create new entry with test message preference
-      const newData = {
+      await kv.set(["users", "reminders", chatId.toString()], {
         chatId,
         addedAt: new Date().toISOString(),
         active: true,
         reminderTimes: ["22:00"], // Default reminder time
         taskRefreshNotifications: true,
         receiveTestMessages: enabled,
-      };
-      console.log(`Debug setUserTestMessages: newData=${JSON.stringify(newData)}`);
-      await kv.set(["users", "reminders", chatId.toString()], newData);
+      });
       console.log(
         `Created new user ${chatId} with test messages set to ${enabled}`,
       );
@@ -641,15 +634,10 @@ export async function getUserTestMessages(
   chatId: number,
 ): Promise<boolean | null> {
   try {
-    console.log(`Debug getUserTestMessages: chatId=${chatId}`);
     const result = await kv.get(["users", "reminders", chatId.toString()]);
-    console.log(`Debug getUserTestMessages: result=${JSON.stringify(result)}`);
     const userData = result.value as UserReminderData | null;
-    console.log(`Debug getUserTestMessages: userData=${JSON.stringify(userData)}`);
     if (userData) {
-      const preference = userData.receiveTestMessages ?? false; // Default to disabled
-      console.log(`Debug getUserTestMessages: preference=${preference}`);
-      return preference;
+      return userData.receiveTestMessages ?? false; // Default to disabled
     }
     return null; // User not found
   } catch (error) {
