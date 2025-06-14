@@ -1,5 +1,6 @@
 // Initialize Deno KV for user tracking
 // @ts-ignore - Deno global is available in Deno runtime
+// Triggering new deployment
 const kv = await Deno.openKv();
 
 export interface UserReminderData {
