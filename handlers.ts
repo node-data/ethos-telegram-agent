@@ -2,14 +2,18 @@ import { sendChatAction, sendMessage, sendPhoto } from "./telegram.ts";
 import {
   addUserReminderTime,
   addUserToReminders,
+  getAllReminderUsers,
+  getReminderTimeStats,
   getUserReminderTime,
   getUserReminderTimes,
   getUserTaskRefreshNotifications,
+  getUserTestMessages,
   getUserUserkey,
   removeUserFromReminders,
   removeUserReminderTime,
   setUserReminderTime,
   setUserTaskRefreshNotifications,
+  setUserTestMessages,
   setUserUserkey,
 } from "./database.ts";
 import { formatTimeForDisplay, parseReminderTime } from "./utils.ts";
@@ -863,5 +867,48 @@ Use /set_userkey &lt;handle_or_address&gt; to enable smart reminders.
         messageId,
       );
     }
+  }
+
+  // Handle /enable_test_messages command
+  if (text === "/enable_test_messages") {
+    await setUserTestMessages(chatId, true);
+    const confirmMessage = `
+✅ <b>Test Messages Enabled!</b>
+
+You will now receive test messages when smart reminders are skipped due to completed tasks.
+
+Use /disable_test_messages anytime to disable these test messages.
+        `.trim();
+    await sendMessage(chatId, confirmMessage, "HTML", messageId);
+    return;
+  }
+
+  // Handle /disable_test_messages command
+  if (text === "/disable_test_messages") {
+    await setUserTestMessages(chatId, false);
+    const confirmMessage = `
+🔕 <b>Test Messages Disabled</b>
+
+You will no longer receive test messages when smart reminders are skipped.
+
+You can re-enable them anytime by using /enable_test_messages.
+        `.trim();
+    await sendMessage(chatId, confirmMessage, "HTML", messageId);
+    return;
+  }
+
+  // Handle /get_test_messages command
+  if (text === "/get_test_messages") {
+    const testMessagesEnabled = await getUserTestMessages(chatId);
+    const status = testMessagesEnabled ? "enabled" : "disabled";
+    const confirmMessage = `
+<b>Test Messages Status</b>
+
+Test messages are currently <b>${status}</b>.
+
+Use /enable_test_messages to enable or /disable_test_messages to disable test messages.
+        `.trim();
+    await sendMessage(chatId, confirmMessage, "HTML", messageId);
+    return;
   }
 }

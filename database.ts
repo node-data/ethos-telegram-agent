@@ -10,6 +10,7 @@ export interface UserReminderData {
   updatedAt?: string;
   taskRefreshNotifications?: boolean; // New field for task refresh notification preference
   userkey?: string; // Optional field to store user's Ethos userkey for task checking
+  receiveTestMessages?: boolean; // New field to track if user wants to receive test messages
 }
 
 export interface NotificationRecord {
@@ -581,5 +582,63 @@ export async function recordNotificationSent(
     });
   } catch (error) {
     console.error("Error recording notification:", error);
+  }
+}
+
+// New function to set test message preference
+export async function setUserTestMessages(
+  chatId: number,
+  enabled: boolean,
+): Promise<void> {
+  try {
+    const existingData = await kv.get([
+      "users",
+      "reminders",
+      chatId.toString(),
+    ]);
+    const existingUserData = existingData.value as UserReminderData | null;
+    if (existingUserData) {
+      await kv.set(["users", "reminders", chatId.toString()], {
+        ...existingUserData,
+        receiveTestMessages: enabled,
+        updatedAt: new Date().toISOString(),
+      });
+      console.log(
+        `Updated test messages for user ${chatId} to ${enabled}`,
+      );
+    } else {
+      // User doesn't exist, create new entry with test message preference
+      await kv.set(["users", "reminders", chatId.toString()], {
+        chatId,
+        addedAt: new Date().toISOString(),
+        active: true,
+        reminderTimes: ["22:00"], // Default reminder time
+        taskRefreshNotifications: true,
+        receiveTestMessages: enabled,
+      });
+      console.log(
+        `Created new user ${chatId} with test messages set to ${enabled}`,
+      );
+    }
+  } catch (error) {
+    console.error("Error setting test messages:", error);
+    throw error;
+  }
+}
+
+// New function to get user's test message preference
+export async function getUserTestMessages(
+  chatId: number,
+): Promise<boolean | null> {
+  try {
+    const result = await kv.get(["users", "reminders", chatId.toString()]);
+    const userData = result.value as UserReminderData | null;
+    if (userData) {
+      return userData.receiveTestMessages ?? false; // Default to disabled
+    }
+    return null; // User not found
+  } catch (error) {
+    console.error("Error getting user test messages:", error);
+    return null;
   }
 }

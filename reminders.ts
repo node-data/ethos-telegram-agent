@@ -4,7 +4,8 @@ import {
   getUserUserkey,
   removeUserFromReminders,
   wasNotificationRecentlySent,
-  recordNotificationSent
+  recordNotificationSent,
+  getUserTestMessages
 } from "./database.ts";
 import { sendMessage } from "./telegram.ts";
 import { checkDailyContributionStatus } from "./ethos.ts";
@@ -92,9 +93,11 @@ export async function sendRemindersForHour(
               `Skipping reminder for user ${chatId} - daily tasks already completed`,
             );
 
-            // TODO: REMOVE THIS TEST MESSAGE AFTER TESTING
-            // Temporary test message to verify smart reminder logic is working
-            const testMessage = `
+            // Check if user has opted into test messages
+            const receiveTestMessages = await getUserTestMessages(chatId);
+            if (receiveTestMessages) {
+              // Test message to verify smart reminder logic is working
+              const testMessage = `
 🧪 <b>TEST: Smart Reminder Skipped!</b>
 
 You would have received a daily task reminder right now, but our smart system detected that you've already completed your contributor tasks today! 
@@ -102,25 +105,26 @@ You would have received a daily task reminder right now, but our smart system de
 ✅ <b>Tasks completed</b> - No reminder needed
 🧠 <b>Smart reminders working correctly</b>
 
-<i>This is a temporary test message that will be removed after testing.</i>
+<i>Use /disable_test_messages to stop receiving these test messages.</i>
                         `.trim();
 
-            try {
-              await sendMessage(
-                chatId,
-                testMessage,
-                "HTML",
-                undefined,
-                ETHOS_KEYBOARD,
-              );
-              console.log(
-                `Sent test message to user ${chatId} - reminder skipped due to completed tasks`,
-              );
-            } catch (error) {
-              console.error(
-                `Failed to send test message to user ${chatId}:`,
-                error,
-              );
+              try {
+                await sendMessage(
+                  chatId,
+                  testMessage,
+                  "HTML",
+                  undefined,
+                  ETHOS_KEYBOARD,
+                );
+                console.log(
+                  `Sent test message to user ${chatId} - reminder skipped due to completed tasks`,
+                );
+              } catch (error) {
+                console.error(
+                  `Failed to send test message to user ${chatId}:`,
+                  error,
+                );
+              }
             }
 
             skippedCount++;
