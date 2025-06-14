@@ -52,6 +52,7 @@ export async function addUserToReminders(
       existingUserData?.taskRefreshNotifications ?? true; // Default to enabled
     const existingUserkey = existingUserData?.userkey; // Preserve existing userkey
     const existingAddedAt = existingUserData?.addedAt || new Date().toISOString(); // Preserve original addedAt
+    const existingTestMessages = existingUserData?.receiveTestMessages ?? false; // Preserve test message preference
 
     await kv.set(["users", "reminders", chatId.toString()], {
       chatId,
@@ -59,13 +60,14 @@ export async function addUserToReminders(
       active: true,
       reminderTimes: reminderTime ? [reminderTime] : defaultTimes, // Store as array of "HH:MM" in UTC
       taskRefreshNotifications: existingTaskRefreshPref,
+      receiveTestMessages: existingTestMessages, // Preserve test message preference
       ...(existingUserkey && { userkey: existingUserkey }), // Preserve userkey if it exists
       updatedAt: new Date().toISOString(), // Track when this update happened
     });
     console.log(
       `Added user ${chatId} to reminder list with times ${
         JSON.stringify(reminderTime ? [reminderTime] : defaultTimes)
-      } UTC, task refresh notifications: ${existingTaskRefreshPref}`,
+      } UTC, task refresh notifications: ${existingTaskRefreshPref}, test messages: ${existingTestMessages}`,
     );
   } catch (error) {
     console.error("Error adding user to reminders:", error);
