@@ -1,6 +1,6 @@
 # Ethos Network Telegram Bot
 
-A Telegram bot that helps users look up Ethos Network profiles and provides
+Telegram bot that helps users look up Ethos Network profiles and provides
 daily reminder functionality to maintain contributor streaks.
 
 ## Features
@@ -11,11 +11,49 @@ daily reminder functionality to maintain contributor streaks.
   profiles
 - **Daily Reminders**: Customizable UTC-based reminder system for contributor
   tasks
-- **Interactive Buttons**: Quick actions to review, vouch, or view full profiles
 
-## File Structure
+## Quick Start
 
-The codebase is organized into focused modules for better maintainability:
+### Prerequisites
+
+- [Deno](https://deno.land/) installed
+- Telegram Bot Token from [@BotFather](https://t.me/botfather)
+
+### Local Development
+
+1. **Clone and setup**:
+
+```bash
+git clone <your-repo>
+cd telegram-bot
+```
+
+2. **Create `.env` file**:
+
+```bash
+BOT_TOKEN=your_telegram_bot_token_here
+```
+
+3. **Run the bot**:
+
+```bash
+# Start the bot
+deno task start
+
+# Development mode (auto-restart on changes)
+deno task dev
+```
+
+## Deployment
+
+### Deno Deploy
+
+1. **Push to GitHub**
+2. **Go to [dash.deno.com](https://dash.deno.com)**
+3. **Create new project** → Connect GitHub repo
+4. **Select `main.ts` as entry point**
+5. **Add environment variable**: `BOT_TOKEN=your_token`
+6. **Deploy!**
 
 ### Core Files
 
@@ -109,7 +147,7 @@ to 3 different reminder times per day.
 **Task Refresh Notifications:** Notifications sent at exactly 00:00 UTC when new
 contributor tasks become available and daily streaks reset.
 
-Both notification types are independent - you can enable/disable them separately
+Both notification types are independent, you can enable/disable them separately
 based on your preferences.
 
 ## Smart Reminders
@@ -136,7 +174,7 @@ to check task completion status via the public Ethos API.
 
 ## Multiple Reminders
 
-The bot now supports multiple reminder times per user:
+The bot supports multiple reminder times per user:
 
 - Set up to **3 reminder times** per day
 - Use `/add_reminder_time` to add additional reminders
@@ -193,55 +231,6 @@ The modular structure provides:
 - **Better Maintenance**: Changes are localized to specific modules
 - **Code Reusability**: Functions can be easily imported across modules
 - **Clear Dependencies**: Import statements show module relationships
-
-## Quick Start
-
-### Prerequisites
-
-- [Deno](https://deno.land/) installed
-- Telegram Bot Token from [@BotFather](https://t.me/botfather)
-
-### Local Development
-
-1. **Clone and setup**:
-
-```bash
-git clone <your-repo>
-cd telegram-bot
-```
-
-2. **Create `.env` file**:
-
-```bash
-BOT_TOKEN=your_telegram_bot_token_here
-```
-
-3. **Run the bot**:
-
-```bash
-# Start the bot
-deno task start
-
-# Development mode (auto-restart on changes)
-deno task dev
-```
-
-## Deployment
-
-### Deno Deploy (Recommended - FREE)
-
-1. **Push to GitHub**
-2. **Go to [dash.deno.com](https://dash.deno.com)**
-3. **Create new project** → Connect GitHub repo
-4. **Select `main.ts` as entry point**
-5. **Add environment variable**: `BOT_TOKEN=your_token`
-6. **Deploy!**
-
-### Other Options
-
-- Railway
-- Render
-- Any VPS with Deno installed
 
 ## 🛠️ Commands
 
