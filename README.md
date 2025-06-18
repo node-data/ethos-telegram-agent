@@ -218,8 +218,6 @@ This bot is designed for Deno Deploy and includes:
 
 - `/webhook` - Telegram webhook (POST)
 - `/health` - Health check (GET)
-- `/test-reminder?hour=X` - Test reminder functionality (GET)
-- `/test-task-refresh` - Test task refresh notification functionality (GET)
 - `/set-webhook` - Initial webhook setup (GET)
 
 ## Development Benefits

@@ -96,10 +96,6 @@ export async function fetchUserDisplayName(
     }
 
     const data = await response.json();
-    console.log(
-      `Search API response for "${input}":`,
-      JSON.stringify(data, null, 2),
-    );
 
     if (!data.ok || !data.data.values || data.data.values.length === 0) {
       return null;
@@ -107,7 +103,6 @@ export async function fetchUserDisplayName(
 
     // Return the name of the first matching user
     const name = data.data.values[0].name;
-    console.log(`Found name from search API: "${name}"`);
     return name || null;
   } catch (error) {
     console.error("Error fetching user name:", error);
@@ -167,17 +162,8 @@ export async function getDisplayName(
   profileData: any,
   searchInput: string,
 ): Promise<string> {
-  console.log(
-    `Getting display name for userkey: ${userkey}, searchInput: ${searchInput}`,
-  );
-  console.log(
-    `Profile data:`,
-    profileData ? JSON.stringify(profileData, null, 2) : "null",
-  );
-
   // First priority: Use name from the profile data itself
   if (profileData && profileData.name) {
-    console.log(`Using name from profile data: "${profileData.name}"`);
     return profileData.name;
   }
 
@@ -185,7 +171,6 @@ export async function getDisplayName(
   try {
     const searchName = await fetchUserDisplayName(searchInput);
     if (searchName) {
-      console.log(`Using name from search API: "${searchName}"`);
       return searchName;
     }
   } catch (error) {
@@ -203,7 +188,6 @@ export async function getDisplayName(
     fallbackName = userkey;
   }
 
-  console.log(`Using fallback name from userkey: "${fallbackName}"`);
   return fallbackName;
 }
 

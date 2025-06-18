@@ -64,11 +64,6 @@ export async function addUserToReminders(
       ...(existingUserkey && { userkey: existingUserkey }), // Preserve userkey if it exists
       updatedAt: new Date().toISOString(), // Track when this update happened
     });
-    console.log(
-      `Added user ${chatId} to reminder list with times ${
-        JSON.stringify(reminderTime ? [reminderTime] : defaultTimes)
-      } UTC, task refresh notifications: ${existingTaskRefreshPref}, test messages: ${existingTestMessages}`,
-    );
   } catch (error) {
     console.error("Error adding user to reminders:", error);
   }
@@ -77,7 +72,6 @@ export async function addUserToReminders(
 export async function removeUserFromReminders(chatId: number): Promise<void> {
   try {
     await kv.delete(["users", "reminders", chatId.toString()]);
-    console.log(`Removed user ${chatId} from reminder list`);
   } catch (error) {
     console.error("Error removing user from reminders:", error);
   }
@@ -140,9 +134,6 @@ export async function setUserReminderTime(
         reminderTimes: [reminderTime], // Replace all times with single time for backward compatibility
         updatedAt: new Date().toISOString(),
       });
-      console.log(
-        `Updated reminder time for user ${chatId} to ${reminderTime} UTC`,
-      );
     } else {
       // User doesn't exist, create new entry
       await addUserToReminders(chatId, reminderTime);
@@ -212,11 +203,6 @@ export async function addUserReminderTime(
       });
     }
 
-    console.log(
-      `Added reminder time ${reminderTime} for user ${chatId}. Total times: ${
-        JSON.stringify(newTimes)
-      }`,
-    );
     return {
       success: true,
       message: `Added reminder for ${reminderTime} UTC.`,
@@ -268,9 +254,6 @@ export async function removeUserReminderTime(
         active: false,
         updatedAt: new Date().toISOString(),
       });
-      console.log(
-        `Removed last reminder time for user ${chatId}. User deactivated.`,
-      );
       return {
         success: true,
         message: "Removed reminder. You now have no active reminders.",
@@ -281,11 +264,6 @@ export async function removeUserReminderTime(
         reminderTimes: newTimes,
         updatedAt: new Date().toISOString(),
       });
-      console.log(
-        `Removed reminder time ${reminderTime} for user ${chatId}. Remaining times: ${
-          JSON.stringify(newTimes)
-        }`,
-      );
       return {
         success: true,
         message: `Removed reminder for ${reminderTime} UTC.`,
@@ -426,9 +404,6 @@ export async function setUserTaskRefreshNotifications(
         taskRefreshNotifications: enabled,
         updatedAt: new Date().toISOString(),
       });
-      console.log(
-        `Updated task refresh notifications for user ${chatId} to ${enabled}`,
-      );
     } else {
       // User doesn't exist, create new entry with task refresh preference
       await kv.set(["users", "reminders", chatId.toString()], {
@@ -438,9 +413,6 @@ export async function setUserTaskRefreshNotifications(
         reminderTimes: ["22:00"], // Default reminder time
         taskRefreshNotifications: enabled,
       });
-      console.log(
-        `Created new user ${chatId} with task refresh notifications set to ${enabled}`,
-      );
     }
   } catch (error) {
     console.error("Error setting task refresh notifications:", error);
@@ -471,9 +443,7 @@ export async function setUserUserkey(
   userkey: string,
 ): Promise<void> {
   try {
-    console.log(`Debug setUserUserkey: chatId=${chatId}, userkey=${userkey}`);
     const keyPath = ["users", "reminders", chatId.toString()];
-    console.log(`Debug setUserUserkey: keyPath=${JSON.stringify(keyPath)}`);
 
     const existingData = await kv.get([
       "users",
@@ -481,9 +451,6 @@ export async function setUserUserkey(
       chatId.toString(),
     ]);
     const existingUserData = existingData.value as UserReminderData | null;
-    console.log(
-      `Debug setUserUserkey: existingData=${JSON.stringify(existingUserData)}`,
-    );
 
     if (existingUserData) {
       const updatedData = {
@@ -491,11 +458,7 @@ export async function setUserUserkey(
         userkey: userkey,
         updatedAt: new Date().toISOString(),
       };
-      console.log(
-        `Debug setUserUserkey: updatedData=${JSON.stringify(updatedData)}`,
-      );
       await kv.set(["users", "reminders", chatId.toString()], updatedData);
-      console.log(`Updated userkey for user ${chatId}`);
     } else {
       // Create new user with userkey
       const newData = {
@@ -506,9 +469,7 @@ export async function setUserUserkey(
         taskRefreshNotifications: true,
         userkey: userkey,
       };
-      console.log(`Debug setUserUserkey: newData=${JSON.stringify(newData)}`);
       await kv.set(["users", "reminders", chatId.toString()], newData);
-      console.log(`Created new user ${chatId} with userkey`);
     }
   } catch (error) {
     console.error("Error setting user userkey:", error);
@@ -519,22 +480,16 @@ export async function setUserUserkey(
 // New function to get user's userkey
 export async function getUserUserkey(chatId: number): Promise<string | null> {
   try {
-    console.log(`Debug getUserUserkey: chatId=${chatId}`);
     const keyPath = ["users", "reminders", chatId.toString()];
-    console.log(`Debug getUserUserkey: keyPath=${JSON.stringify(keyPath)}`);
 
     const result = await kv.get(["users", "reminders", chatId.toString()]);
-    console.log(`Debug getUserUserkey: result=${JSON.stringify(result)}`);
 
     const userData = result.value as UserReminderData | null;
-    console.log(`Debug getUserUserkey: userData=${JSON.stringify(userData)}`);
 
     const userkey = userData?.userkey;
-    console.log(`Debug getUserUserkey: userkey=${userkey}`);
 
     // Return null if userkey is empty string (cleared) or undefined
     const finalResult = (userkey && userkey.trim() !== "") ? userkey : null;
-    console.log(`Debug getUserUserkey: finalResult=${finalResult}`);
 
     return finalResult;
   } catch (error) {
@@ -606,9 +561,6 @@ export async function setUserTestMessages(
         receiveTestMessages: enabled,
         updatedAt: new Date().toISOString(),
       });
-      console.log(
-        `Updated test messages for user ${chatId} to ${enabled}`,
-      );
     } else {
       // User doesn't exist, create new entry with test message preference
       await kv.set(["users", "reminders", chatId.toString()], {
@@ -619,9 +571,6 @@ export async function setUserTestMessages(
         taskRefreshNotifications: true,
         receiveTestMessages: enabled,
       });
-      console.log(
-        `Created new user ${chatId} with test messages set to ${enabled}`,
-      );
     }
   } catch (error) {
     console.error("Error setting test messages:", error);

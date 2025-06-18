@@ -57,19 +57,19 @@ function createMessageHash(message: string): string {
 export async function sendRemindersForHour(
   currentHour: number,
 ): Promise<{ success: number; failed: number; skipped: number }> {
-  console.log(`🔔 Checking for reminders at hour ${currentHour} UTC...`);
+  // console.log(`🔔 Checking for reminders at hour ${currentHour} UTC...`);
 
   try {
     const users = await getUsersForReminderTime(currentHour);
 
     if (users.length === 0) {
-      console.log(`No users scheduled for reminders at ${currentHour}:00 UTC`);
+      // console.log(`No users scheduled for reminders at ${currentHour}:00 UTC`);
       return { success: 0, failed: 0, skipped: 0 };
     }
 
-    console.log(
-      `Checking ${users.length} users at ${currentHour}:00 UTC for task completion status...`,
-    );
+    // console.log(
+    //   `Checking ${users.length} users at ${currentHour}:00 UTC for task completion status...`,
+    // );
 
     let successCount = 0;
     let failureCount = 0;
@@ -89,9 +89,9 @@ export async function sendRemindersForHour(
 
           if (contributionStatus && !contributionStatus.canGenerate) {
             // User has already completed their daily tasks, skip reminder
-            console.log(
-              `Skipping reminder for user ${chatId} - daily tasks already completed`,
-            );
+            // console.log(
+            //   `Skipping reminder for user ${chatId} - daily tasks already completed`,
+            // );
 
             // Check if user has opted into test messages
             const receiveTestMessages = await getUserTestMessages(chatId);
@@ -116,9 +116,9 @@ You would have received a daily task reminder right now, but our smart system de
                   undefined,
                   ETHOS_KEYBOARD,
                 );
-                console.log(
-                  `Sent test message to user ${chatId} - reminder skipped due to completed tasks`,
-                );
+                // console.log(
+                //   `Sent test message to user ${chatId} - reminder skipped due to completed tasks`,
+                // );
               } catch (error) {
                 console.error(
                   `Failed to send test message to user ${chatId}:`,
@@ -132,9 +132,9 @@ You would have received a daily task reminder right now, but our smart system de
           }
 
           if (contributionStatus?.error) {
-            console.log(
-              `Warning: Could not check task status for user ${chatId}: ${contributionStatus.error}. Sending reminder anyway.`,
-            );
+            // console.log(
+            //   `Warning: Could not check task status for user ${chatId}: ${contributionStatus.error}. Sending reminder anyway.`,
+            // );
           }
         }
 
@@ -165,9 +165,9 @@ You would have received a daily task reminder right now, but our smart system de
       }
     }
 
-    console.log(
-      `✅ Reminder summary for ${currentHour}:00 UTC: ${successCount} sent, ${failureCount} failed, ${skippedCount} skipped (tasks completed)`,
-    );
+    // console.log(
+    //   `✅ Reminder summary for ${currentHour}:00 UTC: ${successCount} sent, ${failureCount} failed, ${skippedCount} skipped (tasks completed)`,
+    // );
     return {
       success: successCount,
       failed: failureCount,
@@ -183,20 +183,20 @@ You would have received a daily task reminder right now, but our smart system de
 export async function sendTaskRefreshNotifications(): Promise<
   { success: number; failed: number }
 > {
-  console.log("🌅 Sending task refresh notifications to opted-in users...");
+  // console.log("🌅 Sending task refresh notifications to opted-in users...");
 
   try {
     const users = await getUsersForTaskRefreshNotifications();
     const messageHash = createMessageHash(TASK_REFRESH_NOTIFICATION);
 
     if (users.length === 0) {
-      console.log("No users opted in for task refresh notifications");
+      // console.log("No users opted in for task refresh notifications");
       return { success: 0, failed: 0 };
     }
 
-    console.log(
-      `Sending task refresh notifications to ${users.length} opted-in users`,
-    );
+    // console.log(
+    //   `Sending task refresh notifications to ${users.length} opted-in users`,
+    // );
 
     let successCount = 0;
     let failureCount = 0;
@@ -213,7 +213,7 @@ export async function sendTaskRefreshNotifications(): Promise<
         );
 
         if (wasRecentlySent) {
-          console.log(`Skipping duplicate task refresh notification for user ${chatId}`);
+          // console.log(`Skipping duplicate task refresh notification for user ${chatId}`);
           continue;
         }
 
@@ -249,9 +249,9 @@ export async function sendTaskRefreshNotifications(): Promise<
       }
     }
 
-    console.log(
-      `✅ Task refresh notification summary: ${successCount} sent, ${failureCount} failed`,
-    );
+    // console.log(
+    //   `✅ Task refresh notification summary: ${successCount} sent, ${failureCount} failed`,
+    // );
     return { success: successCount, failed: failureCount };
   } catch (error) {
     console.error("Error in task refresh notification sending:", error);
