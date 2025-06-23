@@ -1,5 +1,14 @@
 import { ETHOS_API_BASE } from "./config.ts";
 
+// Helper function to make API calls with required headers
+async function ethosApiCall(url: string): Promise<Response> {
+  return fetch(url, {
+    headers: {
+      "X-Ethos-Client": "ethos-telegram-agent",
+    },
+  });
+}
+
 // Helper function to determine userkey format
 export function formatUserkey(input: string): string {
   // Remove @ symbol if present
@@ -17,7 +26,7 @@ export function formatUserkey(input: string): string {
 // Helper function to get profileId from userkey
 async function getProfileId(userkey: string): Promise<number | null> {
   try {
-    const response = await fetch(
+    const response = await ethosApiCall(
       `${ETHOS_API_BASE}/api/v1/users/${userkey}/stats`,
     );
 
@@ -51,7 +60,7 @@ export async function checkDailyContributionStatus(
     }
 
     // Now use the profileId to check contributions
-    const response = await fetch(
+    const response = await ethosApiCall(
       `${ETHOS_API_BASE}/api/v1/contributions/profileId:${profileId}/stats`,
     );
 
@@ -85,7 +94,7 @@ export async function fetchUserDisplayName(
   input: string,
 ): Promise<string | null> {
   try {
-    const response = await fetch(
+    const response = await ethosApiCall(
       `${ETHOS_API_BASE}/api/v1/search?query=${
         encodeURIComponent(input)
       }&limit=2`,
@@ -113,7 +122,7 @@ export async function fetchUserDisplayName(
 // Helper function to fetch Ethos score
 export async function fetchEthosScore(userkey: string): Promise<number | null> {
   try {
-    const response = await fetch(`${ETHOS_API_BASE}/api/v1/score/${userkey}`);
+    const response = await ethosApiCall(`${ETHOS_API_BASE}/api/v1/score/${userkey}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -135,7 +144,7 @@ export async function fetchEthosScore(userkey: string): Promise<number | null> {
 // Helper function to fetch profile from Ethos API
 export async function fetchEthosProfile(userkey: string): Promise<any> {
   try {
-    const response = await fetch(
+    const response = await ethosApiCall(
       `${ETHOS_API_BASE}/api/v1/users/${userkey}/stats`,
     );
 
